@@ -1,0 +1,12 @@
+dataset/
+contestData/
+__pycache__
+generated/
+logs/
+Practice/
+Round1/
+to_submit/
+*.in
+.env
+tools/
+
