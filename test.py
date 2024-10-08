@@ -48,8 +48,7 @@ class Trainer:
         self.llm = LLM(model_name=model_name, logger=self.logger)
         self.messages = []
         self.reflection_step = 0
-        self.solution_list=[]
-
+         
     def interpreter(self):
         """
         Prompt = "Rephrases the problem description for clearer understanding."
@@ -105,7 +104,7 @@ class Trainer:
         """
         solution_list = []
 
-        code = self.solve_problem_pro()
+        code = self.solve_problem_pro()[0].code
         
         while self.reflection_step < 3:
             s = Solution(code, self.problem.problem_name, self.problem.sample_input_path, self.problem.sample_output_path, self.problem.full_input_path, self.model_name)
@@ -153,8 +152,7 @@ class Trainer:
         self.logger.info(f"Advisor output: {out}")
  
         code = self.worker(out)
-        s = Solution(code, self.problem.problem_name, self.problem.sample_input_path, self.problem.sample_output_path, self.problem.full_input_path, self.model_name)
-        return s
+        return code
     
     def chain_of_thoughts(self):
         """
@@ -183,8 +181,7 @@ class Trainer:
             self.logger.info(f"Assistant output: {out}")
 
         code = self.worker(out)
-        s = Solution(code, self.problem.problem_name, self.problem.sample_input_path, self.problem.sample_output_path, self.problem.full_input_path, self.model_name)
-        return s
+        return code
     
     def worker(self, assistant_output):
         """
@@ -231,9 +228,11 @@ if __name__ == '__main__':
     model_capability_ranking = 'gpt4' #['o1', 'gpt4', 'claude', 'gemini', gpt3.5] from most capable to least capable 
     trainer1 = Trainer(model_name, problem)
 
-    s = trainer1.solve_problem_pro()
-    testreport, full_testreport = s.eval()
-    sm.add_solution(s)
-
+    sols = trainer1.reflection_pro()
+    for s in list(sols):
+        testreport, full_testreport = s.eval()
+        sm.add_solution(s)
 
     sm.to_submit('to_submit/')
+
+

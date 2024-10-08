@@ -43,7 +43,6 @@ def unzip_questions_if_needed():
     else:
         logging.info("Questions already unzipped.")
 
-
 def run_all_questions(selected_questions):
     """
     Runs the main function for all selected questions using multiprocessing.
@@ -62,30 +61,39 @@ def main(selected_question_index):
     problem_names = [f.name for f in CODE_PARENT_FOLDER.iterdir() if f.is_dir()]
     try:
         problem_name = problem_names[selected_question_index]
+        logger.info(f"Processing problem: {problem_name}")
     except IndexError:
         logging.error(f"Selected question index {selected_question_index + 1} is out of range.")
         return
-    print(problem_name)
-    logger = create_logger(f'logs/trainer.log', 'trainer')
+    logger = create_logger(f'logs/trainer_{selected_question_index}.log', f'trainer{selected_question_index}')
     problem = load_problem_from_folder('2024', CODE_PARENT_FOLDER, problem_name, logger)
     
     # List of model-capability pairs along with the method to be called
     plans = [
         ('gpt4', 'gpt4', Trainer.solve_problem_pro),  # 'openai' model with 'gpt4' capability
-        #('gpt4', 'gpt4', Trainer.reflection_pro),  # 'gemini' model with 'chain_of_thoughts' method
-        #('gpt4', 'gpt4', Trainer.chain_of_thoughts),  # 'gemini' model with 'chain_of_thoughts' method
+        ('gemini', 'gemini', Trainer.solve_problem_pro),  # 'gemini' model with 'chain_of_thoughts' method
+        ('gemini', 'gemini', Trainer.solve_problem_pro),  # 'gemini' model with 'chain_of_thoughts' method
+        ('gemini', 'gemini', Trainer.solve_problem_pro),  # 'gemini' model with 'chain_of_thoughts' method
+        ('gpt4', 'gpt4', Trainer.chain_of_thoughts),  # 'gemini' model with 'chain_of_thoughts' method
     ]
-    solver(problem, plans, logger)
     logger.info(f"Solving {problem_name}")
+    solver(problem, plans, logger)
 
 def solve_problem(trainer_method, problem, model_name, model_capability_ranking, sm, logger):
-    # Call the provided method directly (either solve_problem_pro or chain_of_thoughts)
-    solutions = trainer_method()
-    # Evaluate the solution
-    for s in list(solutions):
+    logger.info(f"Starting to solve with {model_name}, using {trainer_method.__name__}...")
+    try:
+        code = trainer_method()
+        if not code:
+            logger.warning(f"No solutions returned by {trainer_method.__name__} for problem {problem.problem_name}")
+        # Evaluate and add solutions
+        s = Solution(code, problem.problem_name, problem.sample_input_path, problem.sample_output_path, problem.full_input_path, model_name)
+        print("s", flush=True)
         testreport, full_testreport = s.eval()
-        # Add the solution to the solution manager
+        logger.info(f"Evaluating solution: {testreport}")
         sm.add_solution(s)
+        logger.info(f"Solution added for {problem.problem_name}")
+    except Exception as e:
+        logger.error(f"Error solving {problem.problem_name} with {model_name}: {e}")
 
 def solver(problem, plans, logger):
     _ = output_format_indicator(problem, logger)
@@ -103,12 +111,15 @@ def solver(problem, plans, logger):
             futures.append(executor.submit(solve_problem, bound_method, problem, model_name, model_capability_ranking, sm, logger))
         # Wait for all threads to finish
         for future in concurrent.futures.as_completed(futures):
-            future.result()  # Get the result (to catch any exceptions)
+            try:
+                future.result()  # This will raise an exception if something went wrong in the thread
+            except Exception as e:
+                logger.error(f"Error in thread: {e}")
 
-    # Once all threads are done, submit the solutions
-    sm.to_submit('to_submit/')
+    # Once all threads are done, submit the solutions    
     logger.info(f"{sm.solution_manager}")
     logger.info(f"{problem.problem_name} problem solved")
+    sm.to_submit('to_submit/')
 
 if __name__ == "__main__":
     unzip_questions_if_needed()

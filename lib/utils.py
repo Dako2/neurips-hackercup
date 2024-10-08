@@ -102,21 +102,29 @@ def create_logger(log_file, logger_name):
     logger = logging.getLogger(logger_name)
     logger.setLevel(logging.INFO)
 
+    # Check if a FileHandler already exists
     file_handler_exists = any(isinstance(handler, logging.FileHandler) for handler in logger.handlers)
-    # If no FileHandler exists, create one
-    if file_handler_exists:
+    stream_handler_exists = any(isinstance(handler, logging.StreamHandler) for handler in logger.handlers)
+
+    if file_handler_exists and stream_handler_exists:
         return logger
-        
+
     # Create a file handler for logging to a specific file
-    file_handler = logging.FileHandler(log_file)
-    file_handler.setLevel(logging.INFO)
+    if not file_handler_exists:
+        file_handler = logging.FileHandler(log_file)
+        file_handler.setLevel(logging.INFO)
+        # Formatter for the logs
+        formatter = logging.Formatter('%(asctime)s - %(process)d - %(levelname)s - %(message)s')
+        file_handler.setFormatter(formatter)
+        logger.addHandler(file_handler)
 
-    # Formatter for the logs
-    formatter = logging.Formatter('%(asctime)s - %(process)d - %(levelname)s - %(message)s')
-    file_handler.setFormatter(formatter)
+    # Create a stream handler to log to the terminal
+    if not stream_handler_exists:
+        stream_handler = logging.StreamHandler()
+        stream_handler.setLevel(logging.INFO)
+        stream_handler.setFormatter(formatter)
+        logger.addHandler(stream_handler)
 
-    # Add the new handler to the logger
-    logger.addHandler(file_handler)
     # Prevent propagation to the root logger
     logger.propagate = False
 
