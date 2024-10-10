@@ -48,7 +48,24 @@ class Trainer:
         self.llm = LLM(model_name=model_name, logger=self.logger)
         self.messages = []
         self.reflection_step = 0
+<<<<<<< Updated upstream
          
+=======
+        self.solution_list=[]
+
+    @property
+    def method_dict(self):
+        return {
+            "solve_problem_pro":self.solve_problem_pro,
+            "reflection_pro":self.reflection_pro,
+            "chain_of_thoughts":self.chain_of_thoughts,
+            "interpreter":self.interpreter,
+            "meta_learning":self.meta_learning,
+        }
+    def run(self, method):
+        return self.method_dict[method]()
+
+>>>>>>> Stashed changes
     def interpreter(self):
         """
         Prompt = "Rephrases the problem description for clearer understanding."
@@ -214,10 +231,10 @@ class Trainer:
             raise ValueError("No source code generated.")
 
 if __name__ == '__main__':
-    problem_name = 'Line by Line'
+    problem_name = 'Prime Subtractorization'
 
     logger = create_logger(f'logs/trainer.log', 'trainer')
-    problem = load_problem_from_folder('2024', 'contestData/', problem_name, logger)
+    problem = load_problem_from_folder('2024', 'Round1/', problem_name, logger)
     logger.info(f"Solving {problem_name}")
 
     _ = output_format_indicator(problem, logger)
@@ -228,11 +245,17 @@ if __name__ == '__main__':
     model_capability_ranking = 'gpt4' #['o1', 'gpt4', 'claude', 'gemini', gpt3.5] from most capable to least capable 
     trainer1 = Trainer(model_name, problem)
 
+<<<<<<< Updated upstream
     sols = trainer1.reflection_pro()
     for s in list(sols):
         testreport, full_testreport = s.eval()
         sm.add_solution(s)
 
+=======
+    s = trainer1.solve_problem_pro()
+    testreport, full_testreport = s.eval()
+    sm.add_solution(s)
+>>>>>>> Stashed changes
     sm.to_submit('to_submit/')
 
 

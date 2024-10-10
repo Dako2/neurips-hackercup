@@ -50,6 +50,7 @@ def run_all_questions(selected_questions):
     start_time = time.time()
     with ProcessPoolExecutor() as executor:
         executor.map(main, selected_questions)
+
     end_time = time.time()
     total_seconds = end_time - start_time
     logging.info(
@@ -67,9 +68,11 @@ def main(selected_question_index):
         return
     logger = create_logger(f'logs/trainer_{selected_question_index}.log', f'trainer{selected_question_index}')
     problem = load_problem_from_folder('2024', CODE_PARENT_FOLDER, problem_name, logger)
-    
+    logger.info(f"Solving {problem_name}")
+    logger.info(f"Plans {plans}")
     # List of model-capability pairs along with the method to be called
     plans = [
+<<<<<<< Updated upstream
         ('gpt4', 'gpt4', Trainer.solve_problem_pro),  # 'openai' model with 'gpt4' capability
         ('gemini', 'gemini', Trainer.solve_problem_pro),  # 'gemini' model with 'chain_of_thoughts' method
         ('gemini', 'gemini', Trainer.solve_problem_pro),  # 'gemini' model with 'chain_of_thoughts' method
@@ -95,32 +98,54 @@ def solve_problem(trainer_method, problem, model_name, model_capability_ranking,
     except Exception as e:
         logger.error(f"Error solving {problem.problem_name} with {model_name}: {e}")
 
+=======
+        ('gpt4', "solve_problem_pro"),  # 'openai' model with 'gpt4' capability
+        #('gpt4', "reflection_pro"),  # 'gemini' model with 'chain_of_thoughts' method
+        #('gpt4', "chain_of_thoughts"),  # 'gemini' model with 'chain_of_thoughts' method
+    ]
+    solver(problem, plans, logger) #solver under processPool
+    
+>>>>>>> Stashed changes
 def solver(problem, plans, logger):
     _ = output_format_indicator(problem, logger)
     sm = SolutionManager()
+    logger.info("solution manager created")
     # Use ThreadPoolExecutor for parallel processing
     with concurrent.futures.ThreadPoolExecutor() as executor:
         # Submit tasks to the thread pool
         futures = []
-        for model_name, model_capability_ranking, method in plans:
-            # Initialize the trainer
-            trainer = Trainer(model_name, problem)
-            # Bind the method to the trainer instance
-            bound_method = getattr(trainer, method.__name__)
+        for model_name, method in plans:
             # Submit the bound method (solve_problem_pro or chain_of_thoughts)
-            futures.append(executor.submit(solve_problem, bound_method, problem, model_name, model_capability_ranking, sm, logger))
+            futures.append(executor.submit(solve_problem, model_name, method, sm))
         # Wait for all threads to finish
         for future in concurrent.futures.as_completed(futures):
+<<<<<<< Updated upstream
             try:
                 future.result()  # This will raise an exception if something went wrong in the thread
             except Exception as e:
                 logger.error(f"Error in thread: {e}")
 
     # Once all threads are done, submit the solutions    
+=======
+            future.result()  # Get the result (to catch any exceptions)
+    # Once all threads are done, submit the solutions
+    sm.to_submit('to_submit/')
+>>>>>>> Stashed changes
     logger.info(f"{sm.solution_manager}")
     logger.info(f"{problem.problem_name} problem solved")
     sm.to_submit('to_submit/')
 
+def solve_problem(model_name, method, sm):
+    # Call the provided method directly (either solve_problem_pro or chain_of_thoughts)
+        # Initialize the trainer
+    trainer = Trainer(model_name, problem)
+    solutions = trainer.run(method)
+    # Evaluate the solution
+    for s in list(solutions):
+        testreport, full_testreport = s.eval()
+        # Add the solution to the solution manager
+        sm.add_solution(s)
+        
 if __name__ == "__main__":
     unzip_questions_if_needed()
 
