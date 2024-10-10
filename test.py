@@ -49,6 +49,7 @@ class Trainer:
         self.messages = []
         self.reflection_step = 0
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
          
 =======
         self.solution_list=[]
@@ -65,6 +66,19 @@ class Trainer:
     def run(self, method):
         return self.method_dict[method]()
 
+>>>>>>> Stashed changes
+=======
+    
+    def run(self, method):
+        if method == "reflection_pro":
+            self.reflection_pro()
+        elif method == "solve_problem_pro":
+            self.solve_problem_pro()
+        elif method == "chain_of_thoughts":
+            self.chain_of_thoughts()
+        else:
+            raise ValueError("method not claimed")
+        
 >>>>>>> Stashed changes
     def interpreter(self):
         """
@@ -145,11 +159,11 @@ class Trainer:
                 })
             
             self.reflection_step += 1
-            code = self.worker(out)      
-
-        s = Solution(code, self.problem.problem_name, self.problem.sample_input_path, self.problem.sample_output_path, self.problem.full_input_path, self.model_name)
-        testreport, full_testreport = s.eval()
-        solution_list.append(s)
+            code = self.worker(out)     
+            if code:
+                s = Solution(code, self.problem.problem_name, self.problem.sample_input_path, self.problem.sample_output_path, self.problem.full_input_path, self.model_name)
+                testreport, full_testreport = s.eval()
+                solution_list.append(s)
 
         return solution_list
     
@@ -169,7 +183,12 @@ class Trainer:
         self.logger.info(f"Advisor output: {out}")
  
         code = self.worker(out)
-        return code
+        
+        if code:
+            s = Solution(code, self.problem.problem_name, self.problem.sample_input_path, self.problem.sample_output_path, self.problem.full_input_path, self.model_name)
+            testreport, full_testreport = s.eval()
+        
+        return [s]
     
     def chain_of_thoughts(self):
         """
@@ -198,7 +217,12 @@ class Trainer:
             self.logger.info(f"Assistant output: {out}")
 
         code = self.worker(out)
-        return code
+        if code:
+        
+            s = Solution(code, self.problem.problem_name, self.problem.sample_input_path, self.problem.sample_output_path, self.problem.full_input_path, self.model_name)
+            testreport, full_testreport = s.eval()
+            
+        return [s]
     
     def worker(self, assistant_output):
         """
@@ -207,28 +231,20 @@ class Trainer:
         messages = [
             {
                 'role': 'user',
-                'content': CODER_INSTRUCTIONS
-            },
-            {
-                'role': 'assistant',
-                'content': 'Understood.'
-            },
-            {
-                'role': 'user',
-                'content': assistant_output
+                'content': CODER_INSTRUCTIONS + f"This is the code: {assistant_output}"
             },
         ]
         out = self.llm.run_messages(messages=messages)
+        
         code = extract_text(out, '<source_code>')
         code = maybe_remove_backticks(code)
-        if code:
-            if verify_code_syntax(code):
-                self.logger.info(f"Code syntax correct:\n{code}")
-                return code
-            else:
-                raise ValueError("Source code is not compilable.")
+    
+        if verify_code_syntax(code):
+            self.logger.info(f"Code syntax correct:\n{code}")
+            return code
         else:
-            raise ValueError("No source code generated.")
+            return ""
+            #raise ValueError("Source code is not compilable.")
 
 if __name__ == '__main__':
     problem_name = 'Prime Subtractorization'
@@ -246,9 +262,12 @@ if __name__ == '__main__':
     trainer1 = Trainer(model_name, problem)
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     sols = trainer1.reflection_pro()
+=======
+    sols = trainer1.solve_problem_pro()
+>>>>>>> Stashed changes
     for s in list(sols):
-        testreport, full_testreport = s.eval()
         sm.add_solution(s)
 
 =======

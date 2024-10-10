@@ -41,7 +41,7 @@ def extract_text(input_string, format):
     if match:
         return match.group(1).strip()
     else:
-        return None
+        return input_string
     
 def maybe_remove_backticks(solution: str) -> str:
     "Remove backticks from the solution"
