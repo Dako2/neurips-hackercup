@@ -1,8 +1,9 @@
 import streamlit as st
 from test import Trainer, output_format_indicator
 from solution import SolutionManager, Solution
-from lib.utils import create_logger, load_problem_from_folder
+from lib.utils import create_logger, load_problem_from_folder, list_problem_names
 from pathlib import Path
+import logging 
 
 # Set up the page layout
 st.set_page_config(layout="wide")
@@ -20,10 +21,12 @@ st.title("AI Problem Solver")
 
 # Define the directory containing the problems
 problem_directory = 'Round1/'  # Adjust the path as needed
-
+problem_names = list_problem_names(problem_directory, '2024')
 # Get the list of problem names from the directory
-problem_paths = [p for p in Path(problem_directory).iterdir() if p.is_dir()]
-problem_names = [p.name for p in problem_paths]
+logging.info(problem_names)
+
+#problem_directory = 'dataset/2023/round2/'  # Adjust the path as needed
+#problem_names = list_problem_names(problem_directory, '2023')
 
 # Create a dropdown for selecting the problem
 selected_problem_name = st.selectbox("Select a Problem:", problem_names)
@@ -34,6 +37,7 @@ if selected_problem_name:
 
     # Load the problem using your original function
     problem = load_problem_from_folder('2024', problem_directory, selected_problem_name, logger)
+    #problem = load_problem_from_folder('2023', problem_directory, selected_problem_name, logger)
 
     # Initialize SolutionManager
     sm = SolutionManager()

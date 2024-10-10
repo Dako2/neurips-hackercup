@@ -10,7 +10,7 @@ import re
 import sys
 import traceback
 from typing import Any, List, Optional
-
+import glob
 from pydantic import BaseModel, Field
 from tree_sitter_languages import get_language, get_parser
  
@@ -65,6 +65,19 @@ def run_coroutine(coro):
         return loop.run_until_complete(coro)
     finally:
         loop.close()
+
+def list_problem_names(problem_directory, year):
+    if year == '2024':
+        problem_paths = [p for p in Path(problem_directory).iterdir() if p.is_dir()]
+        problem_names = [p.name for p in problem_paths]
+        return problem_names
+    else:
+        output = []
+        fns = glob.glob(f"{problem_directory}/*.in")
+        for fn in fns:
+            if "sol" not in fn:
+                output.append(fn.split('/')[-1])
+        return output
 
 def load_problem_from_folder(year: str, unzipped_path: str, problem_name: str, logger: Logger):
     # Initialization
