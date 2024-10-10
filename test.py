@@ -48,10 +48,6 @@ class Trainer:
         self.llm = LLM(model_name=model_name, logger=self.logger)
         self.messages = []
         self.reflection_step = 0
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-         
-=======
         self.solution_list=[]
 
     @property
@@ -65,9 +61,6 @@ class Trainer:
         }
     def run(self, method):
         return self.method_dict[method]()
-
->>>>>>> Stashed changes
-=======
     
     def run(self, method):
         if method == "reflection_pro":
@@ -79,7 +72,6 @@ class Trainer:
         else:
             raise ValueError("method not claimed")
         
->>>>>>> Stashed changes
     def interpreter(self):
         """
         Prompt = "Rephrases the problem description for clearer understanding."
@@ -162,7 +154,6 @@ class Trainer:
             code = self.worker(out)     
             if code:
                 s = Solution(code, self.problem.problem_name, self.problem.sample_input_path, self.problem.sample_output_path, self.problem.full_input_path, self.model_name)
-                testreport, full_testreport = s.eval()
                 solution_list.append(s)
 
         return solution_list
@@ -186,8 +177,6 @@ class Trainer:
         
         if code:
             s = Solution(code, self.problem.problem_name, self.problem.sample_input_path, self.problem.sample_output_path, self.problem.full_input_path, self.model_name)
-            testreport, full_testreport = s.eval()
-        
         return [s]
     
     def chain_of_thoughts(self):
@@ -261,20 +250,12 @@ if __name__ == '__main__':
     model_capability_ranking = 'gpt4' #['o1', 'gpt4', 'claude', 'gemini', gpt3.5] from most capable to least capable 
     trainer1 = Trainer(model_name, problem)
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-    sols = trainer1.reflection_pro()
-=======
     sols = trainer1.solve_problem_pro()
->>>>>>> Stashed changes
     for s in list(sols):
+        testreport, full_testreport = s.eval()
         sm.add_solution(s)
 
-=======
-    s = trainer1.solve_problem_pro()
-    testreport, full_testreport = s.eval()
     sm.add_solution(s)
->>>>>>> Stashed changes
     sm.to_submit('to_submit/')
 
 

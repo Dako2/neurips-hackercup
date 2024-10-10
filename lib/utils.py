@@ -106,7 +106,6 @@ def create_logger(log_file, logger_name):
     file_handler_exists = any(isinstance(handler, logging.FileHandler) for handler in logger.handlers)
     stream_handler_exists = any(isinstance(handler, logging.StreamHandler) for handler in logger.handlers)
 
-<<<<<<< Updated upstream
     if file_handler_exists and stream_handler_exists:
         return logger
 
@@ -118,14 +117,7 @@ def create_logger(log_file, logger_name):
         formatter = logging.Formatter('%(asctime)s - %(process)d - %(levelname)s - %(message)s')
         file_handler.setFormatter(formatter)
         logger.addHandler(file_handler)
-
-    # Create a stream handler to log to the terminal
-    if not stream_handler_exists:
-        stream_handler = logging.StreamHandler()
-        stream_handler.setLevel(logging.INFO)
-        stream_handler.setFormatter(formatter)
-=======
-    # If no FileHandler exists, create one
+ 
     if not file_handler_exists:
         # Create a file handler for logging to a specific file
         file_handler = logging.FileHandler(log_file)
@@ -147,8 +139,6 @@ def create_logger(log_file, logger_name):
         # Formatter for the logs (same as for file, can be customized separately)
         stream_handler.setFormatter(formatter)
 
-        # Add the stream handler to the logger
->>>>>>> Stashed changes
         logger.addHandler(stream_handler)
 
     # Prevent propagation to the root logger
