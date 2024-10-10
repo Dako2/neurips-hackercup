@@ -1,146 +1,163 @@
-import sys
-import os
-import pathlib
-import logging
-import time
-import multiprocessing
-
-# Third-party imports
-import pyzipper  # Used if unzip functionality is required
-
-# Custom module imports
+import streamlit as st
 from test import Trainer, output_format_indicator
-from lib.utils import load_problem_from_folder, create_logger, unzip_questions
+from solution import SolutionManager, Solution
+from lib.utils import create_logger, load_problem_from_folder
+from pathlib import Path
 
-import concurrent.futures
-from concurrent.futures import ProcessPoolExecutor
-from solution import Solution, SolutionManager
+# Set up the page layout
+st.set_page_config(layout="wide")
 
-# Configure logging
-logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
+# Initialize session state for generated code and evaluation reports
+if 'generated_code' not in st.session_state:
+    st.session_state['generated_code'] = ''
+if 'test_report' not in st.session_state:
+    st.session_state['test_report'] = ''
+if 'evaluation_report' not in st.session_state:
+    st.session_state['evaluation_report'] = ''
 
-# Ensure necessary directories exist
-os.makedirs("./to_submit", exist_ok=True)
-os.makedirs("./logs", exist_ok=True)
+# Title of the application
+st.title("AI Problem Solver")
 
-# Constants
-CODE_PARENT_FOLDER = pathlib.Path('./Round1')  # TODO: Update as needed
-ZIP_PATH = pathlib.Path('/Users/dako22/Downloads/contestData (1).zip')
-PASSWORD = "w3ak_password_for_practice"
+# Define the directory containing the problems
+problem_directory = 'Round1/'  # Adjust the path as needed
 
-def unzip_questions_if_needed():
-    """
-    Unzips the questions if they haven't been unzipped yet.
-    """
-    if not CODE_PARENT_FOLDER.exists() or not any(CODE_PARENT_FOLDER.iterdir()):
-        logging.info("Unzipping questions...")
-        try:
-            unzip_questions(ZIP_PATH, PASSWORD, CODE_PARENT_FOLDER)
-            logging.info("Questions unzipped successfully.")
-        except ValueError as e:
-            logging.error(f"Failed to unzip questions: {e}")
-            sys.exit(1)
-    else:
-        logging.info("Questions already unzipped.")
+# Get the list of problem names from the directory
+problem_paths = [p for p in Path(problem_directory).iterdir() if p.is_dir()]
+problem_names = [p.name for p in problem_paths]
 
-def run_all_questions(selected_questions):
-    """
-    Runs the main function for all selected questions using multiprocessing.
-    """
-    start_time = time.time()
-    with ProcessPoolExecutor() as executor:
-        executor.map(main, selected_questions)
+# Create a dropdown for selecting the problem
+selected_problem_name = st.selectbox("Select a Problem:", problem_names)
 
-    end_time = time.time()
-    total_seconds = end_time - start_time
-    logging.info(
-        f"Total time taken for {len(selected_questions)} questions: "
-        f"{total_seconds:.0f} seconds / {total_seconds / 60:.1f} minutes"
-    )
+if selected_problem_name:
+    # Create a logger
+    logger = create_logger(f'logs/trainer_{selected_problem_name}.log', 'trainer')
 
-def main(selected_question_index):
-    problem_names = [f.name for f in CODE_PARENT_FOLDER.iterdir() if f.is_dir()]
-    try:
-        problem_name = problem_names[selected_question_index]
-        logger.info(f"Processing problem: {problem_name}")
-    except IndexError:
-        logging.error(f"Selected question index {selected_question_index + 1} is out of range.")
-        return
-    logger = create_logger(f'logs/trainer_{selected_question_index}.log', f'trainer{selected_question_index}')
-    problem = load_problem_from_folder('2024', CODE_PARENT_FOLDER, problem_name, logger)
-    logger.info(f"Solving {problem_name}")
-    logger.info(f"Plans {plans}")
-    # List of model-capability pairs along with the method to be called
-    plans = [
-        ('gpt4', "solve_problem_pro"),  # 'openai' model with 'gpt4' capability
-        #('gpt4', "reflection_pro"),  # 'gemini' model with 'chain_of_thoughts' method
-        #('gpt4', "chain_of_thoughts"),  # 'gemini' model with 'chain_of_thoughts' method
-    ]
-    logger.info(f"Solving {problem_name}")
-    solver(problem, plans, logger)
+    # Load the problem using your original function
+    problem = load_problem_from_folder('2024', problem_directory, selected_problem_name, logger)
 
-def solve_problem(trainer_method, problem, model_name, model_capability_ranking, sm, logger):
-    logger.info(f"Starting to solve with {model_name}, using {trainer_method.__name__}...")
-    try:
-        code = trainer_method()
-        if not code:
-            logger.warning(f"No solutions returned by {trainer_method.__name__} for problem {problem.problem_name}")
-        # Evaluate and add solutions
-        s = Solution(code, problem.problem_name, problem.sample_input_path, problem.sample_output_path, problem.full_input_path, model_name)
-        print("s", flush=True)
-        testreport, full_testreport = s.eval()
-        logger.info(f"Evaluating solution: {testreport}")
-        sm.add_solution(s)
-        logger.info(f"Solution added for {problem.problem_name}")
-    except Exception as e:
-        logger.error(f"Error solving {problem.problem_name} with {model_name}: {e}")
-
-def solver(problem, plans, logger):
-    _ = output_format_indicator(problem, logger)
+    # Initialize SolutionManager
     sm = SolutionManager()
-    logger.info("solution manager created")
-    # Use ThreadPoolExecutor for parallel processing
-    with concurrent.futures.ThreadPoolExecutor() as executor:
-        # Submit tasks to the thread pool
-        futures = []
-        for model_name, method in plans:
-            # Submit the bound method (solve_problem_pro or chain_of_thoughts)
-            futures.append(executor.submit(solve_problem, model_name, method, sm))
-        # Wait for all threads to finish
-        for future in concurrent.futures.as_completed(futures):
-            try:
-                future.result()  # This will raise an exception if something went wrong in the thread
-            except Exception as e:
-                logger.error(f"Error in thread: {e}")
-    # Once all threads are done, submit the solutions
-    logger.info(f"{sm.solution_manager}")
-    logger.info(f"{problem.problem_name} problem solved")
-    sm.to_submit('to_submit/')
 
-def solve_problem(model_name, method, sm):
-    # Call the provided method directly (either solve_problem_pro or chain_of_thoughts)
-        # Initialize the trainer
-    trainer = Trainer(model_name, problem)
-    solutions = trainer.run(method)
-    # Evaluate the solution
-    for s in list(solutions):
-        testreport, full_testreport = s.eval()
-        # Add the solution to the solution manager
-        sm.add_solution(s)
-        
-if __name__ == "__main__":
-    unzip_questions_if_needed()
+    # **Place Buttons at the Top**
+    # We can use a container to hold the buttons and position them at the top
+    button_col1, button_col2 = st.columns(2)
+    with button_col1:
+        generate_button = st.button("Generate Solution")
+    with button_col2:
+        evaluate_button = st.button("Evaluate Code")
 
-    # Uncomment the following line if unzipping is needed
-    if len(sys.argv) > 1:
-        # Convert command-line arguments to zero-based indices
-        selected_questions = [int(arg) - 1 for arg in sys.argv[1:] if arg.isdigit()]
-        if selected_questions:
-            run_all_questions(selected_questions)
+    # Left Column: Problem Input
+    left_col, right_col = st.columns(2)
+
+    with left_col:
+        st.header("Problem Statement")
+        # Display the problem description in a text area
+        problem_description = st.text_area("Problem Statement:", problem.problem_description, height=300)
+
+        st.header("Sample Input and Output")
+        sample_input = st.text_area("Sample Input:", problem.sample_input, height=100)
+        sample_output = st.text_area("Sample Output:", problem.sample_output, height=100)
+
+    # Function to generate solution
+    def generate_solution():
+        if problem_description and sample_input and sample_output:
+            # Update the problem instance with any changes made in the text areas
+            problem.problem_description = problem_description
+            problem.sample_input = sample_input
+            problem.sample_output = sample_output
+
+            # Save sample input and output to files
+            problem.sample_input_path.write_text(sample_input)
+            problem.sample_output_path.write_text(sample_output)
+
+            # Determine if exact output format is required
+            _ = output_format_indicator(problem, logger)
+
+            # Initialize Trainer
+            model_name = 'gpt4'  # Adjust as needed
+            trainer = Trainer(model_name, problem)
+
+            # Run the problem-solving method
+            sols = trainer.solve_problem_pro()
+            if sols:
+                s = sols[0]  # Take the first solution
+                # Update session state with generated code
+                st.session_state['generated_code'] = s.code
+
+                # Evaluate the solution
+                testreport, full_testreport = s.eval()
+
+                # Update session state with evaluation results
+                st.session_state['test_report'] = testreport.content
+                st.session_state['evaluation_report'] = (
+                    full_testreport.content if full_testreport else "No full test report available."
+                )
+
+                # Optionally, handle submission of solutions
+                sm.add_solution(s)
+                sm.to_submit('to_submit/')
+            else:
+                st.error("No solution was generated.")
         else:
-            logging.warning("No valid problems selected to solve.")
-    else:
-        logging.warning("No problem numbers provided. Usage: python script.py <problem_numbers>")
+            st.error("Please provide the problem statement, sample input, and sample output.")
 
+    # Function to evaluate code
+    def evaluate_code():
+        # Get the code from the code editor using its key
+        edited_code = st.session_state.get('code_editor', '')
+        if edited_code.strip() == '':
+            st.error("The code editor is empty. Please generate or enter code to evaluate.")
+        else:
+            # Update the session state with the edited code
+            st.session_state['generated_code'] = edited_code
 
+            # Create a new Solution instance with the edited code
+            s = Solution(
+                code=edited_code,
+                problem_name=problem.problem_name,
+                sample_input_path=problem.sample_input_path,
+                sample_output_path=problem.sample_output_path,
+                full_input_path=problem.full_input_path,
+                model_capability='User Edited'
+            )
+            testreport, full_testreport = s.eval()
 
+            # Update session state with evaluation results
+            st.session_state['test_report'] = testreport.content
+            st.session_state['evaluation_report'] = (
+                full_testreport.content if full_testreport else "No full test report available."
+            )
+
+            # Optionally, handle submission of solutions
+            sm.add_solution(s)
+            sm.to_submit('to_submit/')
+
+    # Handle button clicks
+    if generate_button:
+        generate_solution()
+
+    if evaluate_button:
+        evaluate_code()
+
+    # Right Column: Code Editor and Evaluation
+    with right_col:
+        st.header("Generated Code Solution")
+        code_editor = st.text_area(
+            "Code Solution:",
+            value=st.session_state['generated_code'],
+            height=300,
+            key='code_editor'  # Assign a unique key
+        )
+
+        st.header("Solution Log")
+        log_output = st.empty()  # Placeholder for log output
+
+        st.header("Evaluation Report")
+        evaluation_report = st.empty()  # Placeholder for evaluation report
+
+    # Display logs and evaluation reports
+    if st.session_state['test_report']:
+        log_output.text(st.session_state['test_report'])
+
+    if st.session_state['evaluation_report']:
+        evaluation_report.text(st.session_state['evaluation_report'])

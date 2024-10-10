@@ -246,8 +246,7 @@ if __name__ == '__main__':
     
     sm = SolutionManager()
     
-    model_name = 'gpt4'
-    model_capability_ranking = 'gpt4' #['o1', 'gpt4', 'claude', 'gemini', gpt3.5] from most capable to least capable 
+    model_name = 'gpt3.5' #ranking powerful to less ['o1', 'gpt4', 'claude', 'gemini', 'gpt3.5'] from most capable to least capable 
     trainer1 = Trainer(model_name, problem)
 
     sols = trainer1.solve_problem_pro()

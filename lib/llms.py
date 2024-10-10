@@ -43,7 +43,7 @@ class LLM:
 
         if self.model_name == "anthropic":
             self.initialize_anthropic()
-        elif self.model_name == "gpt4" or "o1" or "o1-mini":
+        elif self.model_name == "gpt4" or "o1" or "o1-mini" or "gpt3.5":
             self.initialize_openai()
         elif self.model_name == "gemini":
             self.initialize_gemini()
@@ -218,6 +218,8 @@ class LLM:
     def run_messages(self, messages, temperature=0.7):
         if self.model_name == "gpt4":
             return self.openai_messages(messages, temperature, "gpt-4o-2024-08-06")
+        elif self.model_name == "gpt3.5":
+            return self.openai_messages(messages, None, "gpt-3.5-turbo")
         elif self.model_name == "o1-mini":
             return self.openai_messages(messages, None, "o1-mini-2024-09-12")
         elif self.model_name == "o1":
