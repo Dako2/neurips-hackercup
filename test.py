@@ -63,15 +63,80 @@ class Trainer:
         return self.method_dict[method]()
     
     def run(self, method):
-        if method == "reflection_pro":
-            self.reflection_pro()
-        elif method == "solve_problem_pro":
-            self.solve_problem_pro()
-        elif method == "chain_of_thoughts":
-            self.chain_of_thoughts()
-        else:
-            raise ValueError("method not claimed")
+        try:
+            m = self.method_dict()[method]
+            m()
+        except:
+            raise ValueError("method name error")
+    
+    def cross_check(self):
+        ###### xxx ######
+        solution_list = []
+        prompt1 = """Competitor #1: your goal is to guess the most possible correct solution; you never agree with Competitor #2 and provide argument from the facts or derivations based on the input information.\n ##Problem: {problem}"""
+        prompt2 = """Competitor #2: your goal is to derive the most possible correct solution given all the input information; you never agree with Competitor #1 and provide argument from the facts or derivations based on the input information.\n ##Problem: {problem}"""
         
+        prompt1 = prompt1.format(problem=self.problem.problem_description)
+        prompt2 = prompt2.format(problem=self.problem.problem_description)
+
+        prompts = [prompt1, prompt2]
+        messages1 = [{
+                'role': 'user',
+                'content': prompt1
+            },
+            {
+                'role': 'assistant',
+                'content': "understood."
+            },
+            ]
+        messages2 = [{
+                'role': 'user',
+                'content': prompt2
+            },
+            {
+                'role': 'assistant',
+                'content': "understood."
+            },
+            ]
+        messages = [messages1, messages2]
+
+        step = 0
+        id1, id2 = 1, 2
+
+        while step < 5:
+            step += 1
+            self.logger.info(f"Step {step}: Competitor {id1} is running...\n\n")
+
+            messages[id1-1].append(
+                {
+                    'role': 'user',
+                    'content': prompts[id1-1]
+                },
+            )
+            self.logger.info(f"Competitor#{id1} LLM Input: {prompts[id1-1]}")
+
+            out = self.llm.run_messages(messages=messages[id1-1], temperature=1)
+            code = self.worker(out)
+            self.logger.info(f"Step {step}: Competitor {id1}'s code is {code}")
+
+            s = Solution(code, self.problem.problem_name, self.problem.sample_input_path, self.problem.sample_output_path, self.problem.full_input_path, self.model_name)
+            testreport, fullreport = s.eval()
+            self.logger.info(f"Step {step}: Competitor {id1}'s testreport is {testreport.content}")
+
+            solution_list.append(s)
+            
+            messages[id1-1].append(
+                {
+                    'role': 'assistant',
+                    'content': out
+                },
+            )
+            prompts[id2-1] = f"Competitor#{id1} provided this solution suggestion:{out} and its evaluation report: {testreport} \n {fullreport}"
+            
+            
+            id1,id2 = id2,id1
+
+        return [s]
+    
     def interpreter(self):
         """
         Prompt = "Rephrases the problem description for clearer understanding."
@@ -246,10 +311,10 @@ if __name__ == '__main__':
     
     sm = SolutionManager()
     
-    model_name = 'gpt3.5' #ranking powerful to less ['o1', 'gpt4', 'claude', 'gemini', 'gpt3.5'] from most capable to least capable 
+    model_name = 'gpt4' #ranking powerful to less ['o1', 'gpt4', 'claude', 'gemini', 'gpt3.5'] from most capable to least capable 
     trainer1 = Trainer(model_name, problem)
 
-    sols = trainer1.solve_problem_pro()
+    sols = trainer1.cross_check()
     for s in list(sols):
         testreport, full_testreport = s.eval()
         sm.add_solution(s)

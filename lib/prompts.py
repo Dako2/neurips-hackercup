@@ -146,9 +146,7 @@ You are provided with a solution to a problem statement.
 Your task is to create the complete runnable source code to generate answers in python3 without external libraries. Do not put any comments in the code. Do not use multithreading. Generate a source code with if __main__ execution to solve the problem.
 **Formatting Instructions: Your response must follow the following xml format.**
 <source_code>
-'''python
 [pure executable python source code in this section.]
-'''
 </source_code>
 """
 
