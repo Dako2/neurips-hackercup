@@ -70,7 +70,7 @@ class Trainer:
         except:
             raise ValueError("method name error")
     
-    def cross_check(self):
+    def battle_ground(self):
         
         solution_list = []
 
@@ -79,7 +79,7 @@ class Trainer:
         #prompt2 = """You are Competitor #2: Your goal is to provide the TRULY correct and NO-TIMEOUT solution. You MAY learn from Competitor#1 but you always provide argument from the facts or derivations based on the input information. \n <root><problem_statement>{problem}</problem_statement></root>"""
         
         #'Prime Subtractorization'
-        prompt1 = """You are Competitor #1: Your goal is to provide the TRULY correct and NO-TIMEOUT solution. You NEVER agree with Competitor#1. You always provide argument from the facts or derivations based on the input information, and explicitly illustrate your NEW approach, fix and technique.\n <root><problem_statement>{problem}</problem_statement></root>"""
+        prompt1 = """You are Competitor #1: Your goal is to provide the TRULY correct and NO-TIMEOUT solution. You NEVER agree with Competitor#2. You always provide argument from the facts or derivations based on the input information, and explicitly illustrate your NEW approach, fix and technique.\n <root><problem_statement>{problem}</problem_statement></root>"""
         prompt2 = """You are Competitor #2. Your goal is to provide the TRULY correct and NO-TIMEOUT solution. You NEVER agree with Competitor#1. You always provide the overlook insights from the problem, provide NEW approach, provide fix and advanced techniques. \n <root><problem_statement>{problem}</problem_statement></root>"""
         
         #prompt1 = """You are Competitor #1: Your goal is to provide the TRULY correct and NO-TIMEOUT solution. You NEVER agree with Competitor#1. You always provide argument from the facts or derivations based on the input information, and explicitly illustrate your NEW approach, fix and technique.\n <root><problem_statement>{problem}</problem_statement></root>"""
@@ -111,7 +111,7 @@ class Trainer:
 
         step = 0
         id1, id2 = 1, 2
-        while step < 6:
+        while step < 7:
             step += 1
             self.logger.info(f"\n\n***************Step {step}: Competitor {id1} is running...***************\n\n")
 
@@ -131,7 +131,8 @@ class Trainer:
             testreport, fullreport = s.eval()
             self.sm.add_solution(s)
 
-            self.logger.info(f"Step {step}: Competitor #{id1}'s testreport is {testreport.content}")
+            if fullreport and testreport:
+                self.logger.info(f"Step {step}: Competitor #{id1}'s testreport is {testreport.content} \n Full test report: {fullreport.content}\n")
             solution_list.append(s)
             
             messages[id1-1].append(
@@ -322,10 +323,10 @@ if __name__ == '__main__':
     _ = output_format_indicator(problem, logger)
     
     
-    model_name = 'gpt4' #ranking powerful to less ['o1', 'gpt4', 'claude', 'gemini', 'gpt3.5'] from most capable to least capable 
+    model_name = 'gemini' #ranking powerful to less ['o1', 'gpt4', 'claude', 'gemini', 'gpt3.5'] from most capable to least capable 
     trainer1 = Trainer(model_name, problem,)
 
-    sols = trainer1.cross_check()
+    sols = trainer1.battle_ground()
     trainer1.sm.to_submit('to_submit/')
     print(trainer1.sm.solution_manager)
 

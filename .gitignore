@@ -8,4 +8,5 @@ Round1/
 *.in
 .env
 tools/
-
+to_submit/*
+*.zip

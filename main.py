@@ -1,3 +1,6 @@
+#streamlit run app.py
+
+# 
 import sys
 import os
 import pathlib
@@ -25,7 +28,7 @@ os.makedirs("./logs", exist_ok=True)
 
 # Constants
 CODE_PARENT_FOLDER = pathlib.Path('./Round1')  # TODO: Update as needed
-ZIP_PATH = pathlib.Path('/Users/dako22/Downloads/contestData (1).zip')
+ZIP_PATH = pathlib.Path('contestData.zip')#/mnt/c/user/tangqi/Downloads/
 PASSWORD = "w3ak_password_for_practice"
 
 def unzip_questions_if_needed():

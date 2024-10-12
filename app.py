@@ -133,8 +133,8 @@ if selected_problem_name:
             )
 
             # Optionally, handle submission of solutions
-            sm.add_solution(s)
-            sm.to_submit('to_submit/')
+            #sm.add_solution(s)
+            #sm.to_submit('to_submit/')
 
     # Handle button clicks
     if generate_button:

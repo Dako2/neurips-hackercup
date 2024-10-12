@@ -190,7 +190,7 @@ def evaluator_sample(code, sample_input_path, sample_output_path):  # sample_tes
         test_report_sample = future_report.result()
         return test_report_sample
 
-def generate_full(code, full_input_path, full_output_path, timeout=30):  # create new full output file for each case maybe
+def generate_full(code, full_input_path, full_output_path, timeout=15):  # create new full output file for each case maybe
     with ThreadPoolExecutor(max_workers=1) as executor:
         future_report = executor.submit(
             run_coroutine, 
