@@ -141,7 +141,7 @@ class LLM:
             )        
         # Extract the response content
         self.response = response.choices[0].message.content.strip()
-        self.logger.info(f"\n\openai reponse:{self.response}")
+        #self.logger.info(f"\n********Openai reponse:{self.response}\n*********")
         return self.response
     
     def initialize_gemini(self):

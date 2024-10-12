@@ -5,7 +5,6 @@ generated/
 logs/
 Practice/
 Round1/
-to_submit/
 *.in
 .env
 tools/

@@ -1,0 +1,13 @@
+<expected>
+Case #1: 0.3
+Case #2: 1.5
+Case #3: -1
+Case #4: 0.5
+</expected>
+---
+<got>
+Case #1: -1
+Case #2: -1
+Case #3: -1
+Case #4: 0.500000
+</got>

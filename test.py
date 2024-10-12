@@ -49,6 +49,7 @@ class Trainer:
         self.messages = []
         self.reflection_step = 0
         self.solution_list=[]
+        self.sm = SolutionManager()
 
     @property
     def method_dict(self):
@@ -70,10 +71,19 @@ class Trainer:
             raise ValueError("method name error")
     
     def cross_check(self):
-        ###### xxx ######
+        
         solution_list = []
-        prompt1 = """Competitor #1: your goal is to guess the most possible correct solution; you never agree with Competitor #2 and provide argument from the facts or derivations based on the input information.\n ##Problem: {problem}"""
-        prompt2 = """Competitor #2: your goal is to derive the most possible correct solution given all the input information; you never agree with Competitor #1 and provide argument from the facts or derivations based on the input information.\n ##Problem: {problem}"""
+
+        #'Subsonic Subway'
+        #prompt1 = """You are Competitor #1. Your goal is to provide the TRULY correct and NO-TIMEOUT solution. You NEVER agree with Competitor#2. You always provide the missing or misunderstood points by Competitor#2 and provide argument from the facts or derivations based on the input information. \n <root><problem_statement>{problem}</problem_statement></root>"""
+        #prompt2 = """You are Competitor #2: Your goal is to provide the TRULY correct and NO-TIMEOUT solution. You MAY learn from Competitor#1 but you always provide argument from the facts or derivations based on the input information. \n <root><problem_statement>{problem}</problem_statement></root>"""
+        
+        #'Prime Subtractorization'
+        prompt1 = """You are Competitor #1: Your goal is to provide the TRULY correct and NO-TIMEOUT solution. You NEVER agree with Competitor#1. You always provide argument from the facts or derivations based on the input information, and explicitly illustrate your NEW approach, fix and technique.\n <root><problem_statement>{problem}</problem_statement></root>"""
+        prompt2 = """You are Competitor #2. Your goal is to provide the TRULY correct and NO-TIMEOUT solution. You NEVER agree with Competitor#1. You always provide the overlook insights from the problem, provide NEW approach, provide fix and advanced techniques. \n <root><problem_statement>{problem}</problem_statement></root>"""
+        
+        #prompt1 = """You are Competitor #1: Your goal is to provide the TRULY correct and NO-TIMEOUT solution. You NEVER agree with Competitor#1. You always provide argument from the facts or derivations based on the input information, and explicitly illustrate your NEW approach, fix and technique.\n <root><problem_statement>{problem}</problem_statement></root>"""
+        #prompt2 = """You are Competitor #2. Your goal is to provide the TRULY correct and NO-TIMEOUT solution. You NEVER agree with Competitor#1. You may take a step back to think through the problem again. You always provide the missing KEY technique or misunderstood points by Competitor#1, and explicitly illustrate your NEW approach, fix and technique. \n <root><problem_statement>{problem}</problem_statement></root>"""
         
         prompt1 = prompt1.format(problem=self.problem.problem_description)
         prompt2 = prompt2.format(problem=self.problem.problem_description)
@@ -101,10 +111,9 @@ class Trainer:
 
         step = 0
         id1, id2 = 1, 2
-
-        while step < 5:
+        while step < 6:
             step += 1
-            self.logger.info(f"Step {step}: Competitor {id1} is running...\n\n")
+            self.logger.info(f"\n\n***************Step {step}: Competitor {id1} is running...***************\n\n")
 
             messages[id1-1].append(
                 {
@@ -113,15 +122,16 @@ class Trainer:
                 },
             )
             self.logger.info(f"Competitor#{id1} LLM Input: {prompts[id1-1]}")
-
+            
             out = self.llm.run_messages(messages=messages[id1-1], temperature=1)
             code = self.worker(out)
-            self.logger.info(f"Step {step}: Competitor {id1}'s code is {code}")
+            self.logger.info(f"Step {step}: Competitor {id1}'s output is {out}")
 
             s = Solution(code, self.problem.problem_name, self.problem.sample_input_path, self.problem.sample_output_path, self.problem.full_input_path, self.model_name)
             testreport, fullreport = s.eval()
-            self.logger.info(f"Step {step}: Competitor {id1}'s testreport is {testreport.content}")
+            self.sm.add_solution(s)
 
+            self.logger.info(f"Step {step}: Competitor #{id1}'s testreport is {testreport.content}")
             solution_list.append(s)
             
             messages[id1-1].append(
@@ -130,12 +140,12 @@ class Trainer:
                     'content': out
                 },
             )
-            prompts[id2-1] = f"Competitor#{id1} provided this solution suggestion:{out} and its evaluation report: {testreport} \n {fullreport}"
             
+            prompts[id2-1] = f"##Competitor #{id1} provided this <competitor_{id1}_solution>{code}</competitor_{id1}_solution>\n ##The Evaluation Results of Competitor #{id1}'s solution:\n <sample_test>{testreport}</sample_test> <full_test>{fullreport}</full_test>"
             
             id1,id2 = id2,id1
 
-        return [s]
+        return solution_list
     
     def interpreter(self):
         """
@@ -302,6 +312,8 @@ class Trainer:
 
 if __name__ == '__main__':
     problem_name = 'Prime Subtractorization'
+    #problem_name = 'Subsonic Subway'
+    #problem_name = 'Substantial Losses'
 
     logger = create_logger(f'logs/trainer.log', 'trainer')
     problem = load_problem_from_folder('2024', 'Round1/', problem_name, logger)
@@ -309,17 +321,12 @@ if __name__ == '__main__':
 
     _ = output_format_indicator(problem, logger)
     
-    sm = SolutionManager()
     
     model_name = 'gpt4' #ranking powerful to less ['o1', 'gpt4', 'claude', 'gemini', 'gpt3.5'] from most capable to least capable 
-    trainer1 = Trainer(model_name, problem)
+    trainer1 = Trainer(model_name, problem,)
 
     sols = trainer1.cross_check()
-    for s in list(sols):
-        testreport, full_testreport = s.eval()
-        sm.add_solution(s)
-
-    sm.add_solution(s)
-    sm.to_submit('to_submit/')
+    trainer1.sm.to_submit('to_submit/')
+    print(trainer1.sm.solution_manager)
 
 

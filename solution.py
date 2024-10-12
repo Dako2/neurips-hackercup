@@ -25,7 +25,8 @@ class Solution:
     score: float = Field(default=None) #[None, 0->1]
     sample_time_collapse: float = Field(default=100000.)
     sample_eval_status: str = Field(default='pending') # ['passed', 'failed', 'empty', 'error', 'timeout', 'pending']
-    full_output_status: str = Field(default='pending') # ['success', 'error', 'timeout', 'pending']
+    full_output_status: str = Field(default='pending') # ['complete', 'error', 'timeout', 'pending']
+    sample_eval_report: str = Field(default='')
     #output
     code_path: Path = Field(default=None) #[None, "xxxx/xx.py"]
     full_output_path: Path = Field(default=None) #[None, "xxxx/xx.txt"]
@@ -53,7 +54,12 @@ class Solution:
         
     def eval(self):
         self.testreport = evaluator_sample(self.code, self.sample_input_path, self.sample_output_path)
+        self.sample_eval_report_path = self.solution_folder + self.problem_name + f'_{self.timestamp}_sample_eval.txt'
+        with open(self.sample_eval_report_path, 'w') as outfile:
+            outfile.write(self.testreport.message)
+
         self.score = self.testreport.success_rate_number
+        self.sample_eval_report = self.testreport.message
         self.sample_time_collapse = self.testreport.time_collapse
         self.sample_eval_status = self.testreport.status
         if self.testreport.status not in ["error", "timeout"]:
@@ -79,6 +85,7 @@ class Solution:
             'full_output_path': self.full_output_path,
             'model_capability': self.model_capability,
             'sample_time_collapse': self.sample_time_collapse,
+            'sample_eval_report': self.sample_eval_report,
         }
     @property
     def key(self):
@@ -113,7 +120,7 @@ class SolutionManager:
         )
         
         # Define the custom order for full_output_status
-        output_status_order = ['success', 'error', 'timeout', 'pending']
+        output_status_order = ['complete', 'error', 'timeout', 'pending']
         self.solution_manager['full_status'] = pd.Categorical(
             self.solution_manager['full_status'], 
             categories=output_status_order, 
@@ -157,9 +164,13 @@ class SolutionManager:
         os.makedirs(parent_folder, exist_ok=True)
         
         sol = self.best_solution()
+
         if sol.empty or pd.isna(sol['code_path']) or pd.isna(sol['full_output_path']):
             raise ValueError("Best solution or required paths not found")
         try:
+            sample_path = os.path.join(parent_folder, Path(sol['full_output_path']).name+'.eval')
+            with open(sample_path, 'w') as outfile:
+                outfile.write(sol.sample_eval_report)
             shutil.copy2(sol['code_path'], os.path.join(parent_folder, Path(sol['code_path']).name))
             shutil.copy2(sol['full_output_path'], os.path.join(parent_folder, Path(sol['full_output_path']).name))
         except Exception as e:
@@ -179,7 +190,7 @@ def evaluator_sample(code, sample_input_path, sample_output_path):  # sample_tes
         test_report_sample = future_report.result()
         return test_report_sample
 
-def generate_full(code, full_input_path, full_output_path, timeout=15):  # create new full output file for each case maybe
+def generate_full(code, full_input_path, full_output_path, timeout=30):  # create new full output file for each case maybe
     with ThreadPoolExecutor(max_workers=1) as executor:
         future_report = executor.submit(
             run_coroutine, 
@@ -349,7 +360,7 @@ async def generate_output_async(program: str, input_file: Path, output_file: Pat
                 success_rate_number=0.0,
                 failed_full=0,              
                 status="timeout",
-                message=f"time out for executing {total} cases",
+                message=f"!!!!!!Time OUT for executing {total} cases",
                 output=f"{output_file}",
                 time_collapse=time.time()-starting_timer
             )
@@ -382,7 +393,7 @@ async def generate_output_async(program: str, input_file: Path, output_file: Pat
                 success_rate_full=format(0, ".0%"),
                 success_rate_number=0.0,
                 failed_full=0,              
-                status="success",
+                status="complete",
                 message=f"Complete the full evaluation. Output written to {output_file}",
                 output=f"{output_file}",
                 time_collapse=time.time()-starting_timer
