@@ -47,7 +47,7 @@ class LLM:
             self.initialize_openai()
         elif self.model_name == "gemini":
             self.initialize_gemini()
-        elif self.model_name == "codegemma" or "llama3.1":
+        elif self.model_name == "codegemma" or "llama3":
             self.initialize_ollama(self.model_name)
         else:
             raise ValueError(f"Model '{self.model_name}' is not supported.")
@@ -70,6 +70,11 @@ class LLM:
                 'content': prompt
             }
         ]
+        self.response = ollama.chat(model=self.model_name, messages=messages)
+        return self.response['message']['content']
+    
+    def ollama_messages(self, messages):
+        # Prepare the messages for the model
         self.response = ollama.chat(model=self.model_name, messages=messages)
         return self.response['message']['content']
 
@@ -228,6 +233,8 @@ class LLM:
             return self.gemini(transform_to_gemini(messages), temperature)
         elif self.model_name == "anthropic":
             return self.anthropic_messages(messages, temperature)
+        elif self.model_name == "llama3.1":
+            return self.ollama_messages(messages)
         else:
             print(self.model_name)
             raise ValueError("model selection error in run_messages")
@@ -235,7 +242,7 @@ class LLM:
 # Example usage
 if __name__ == "__main__":
     
-    llm = LLM(model_name="anthropic")
+    llm = LLM(model_name="llama3.1")
     prompt = "what day is it today?"
     #response = llm.run(prompt)    
     messages=[
