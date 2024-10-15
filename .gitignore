@@ -11,3 +11,8 @@ tools/
 to_submit/*
 *.zip
 data/
+storage/
+_not_upload/
+to_submit/*
+*.zip
+*.Identifier
