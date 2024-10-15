@@ -149,6 +149,32 @@ class LLM:
         #self.logger.info(f"\n********Openai reponse:{self.response}\n*********")
         return self.response
     
+    def mcts_openai_messages(self, messages, temperature=None, model_name="gpt-4o-2024-08-06", n = 1):
+        """Call the OpenAI (GPT-4) model using the new ChatCompletion API."""
+        if not self.openai_client_initialized:
+            raise RuntimeError("OpenAI client is not initialized.")
+        
+        if temperature:
+            response = self.client.chat.completions.create(
+                model=model_name,
+                messages=messages,
+                temperature=temperature,  # Added temperature parameter
+                #max_tokens=1024
+                n = n,
+            )        
+        else:
+            response = self.client.chat.completions.create(
+                model=model_name,
+                messages=messages,
+                # Added temperature parameter
+                #max_tokens=1024
+                n = n,
+            )        
+        # Extract the response content
+        self.response = response.choices[0].message.content.strip()
+        #self.logger.info(f"\n********Openai reponse:{self.response}\n*********")
+        return self.response
+    
     def initialize_gemini(self):
         """Initialize the Gemini client."""
         GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
@@ -233,24 +259,63 @@ class LLM:
             return self.gemini(transform_to_gemini(messages), temperature)
         elif self.model_name == "anthropic":
             return self.anthropic_messages(messages, temperature)
-        elif self.model_name == "llama3.1":
+        elif self.model_name == "llama3.1" or "codegemma":
             return self.ollama_messages(messages)
         else:
             print(self.model_name)
             raise ValueError("model selection error in run_messages")
-      
+        
 # Example usage
 if __name__ == "__main__":
+    #- Key constraints and unique conditions
     
-    llm = LLM(model_name="llama3.1")
-    prompt = "what day is it today?"
-    #response = llm.run(prompt)    
-    messages=[
-        {
-            "role": "user",
-            "content": "hello",
-        }
-    ]
-    response = llm.run_messages(messages)
-    print(response)
-    #print(type(transform_to_gemini(messages)))
+    summarizer_prompt="""Please provide a concise summary (within 60 words) that captures:
+    **Output**: Use the following xml output format - 
+    - The provided solution types (e.g., graph traversal, dynamic programming); 
+    - The main challenges of solving the problem;
+    - The key coding/implementation ideas;
+    - Provide rationale for the solution;
+    - A list of tags or keywords for search;
+
+    ##Problem Statement:
+    {problem_statement}
+
+    ##Code_solution:
+    {code}
+
+    ##Solution Guidelines:
+    {solution_guidelines}
+    
+    **Output**
+    """
+
+    from utils import load_problem_from_folder, list_problem_names, load_problem_training
+    from pathlib import Path
+    
+    problem_directory = "/mnt/d/AIHackercup/dataset/2023/round2"
+    problem_names = list_problem_names(problem_directory, "2023")
+    for problem_name in problem_names:
+        problem = load_problem_training(problem_name, Path(problem_directory))
+        code = problem.best_code
+        solution_guidelines = problem.solution
+        
+        problem_statement = problem.problem_description
+        code = problem.best_code
+        solution_guidelines = problem.solution
+        
+        for model in ["gpt4",]:
+            llm = LLM(model_name=model)
+            #response = llm.run(prompt)    
+            messages=[
+                {
+                    "role": "user",
+                    "content": summarizer_prompt.format(
+                        problem_statement = problem_statement,
+                        code = code,
+                        solution_guidelines = solution_guidelines,
+                    ),
+                }
+            ]
+            response = llm.run_messages(messages)
+            print(f"##{model}:",response)
+            #print(type(transform_to_gemini(messages)))

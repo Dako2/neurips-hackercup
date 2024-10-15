@@ -76,7 +76,7 @@ def list_problem_names(problem_directory, year):
         fns = glob.glob(f"{problem_directory}/*.in")
         for fn in fns:
             if "sol" not in fn:
-                output.append(fn.split('/')[-1])
+                output.append(fn.split('/')[-1][:-3])
         return output
 
 def load_problem_from_folder(year: str, unzipped_path: str, problem_name: str, logger: Logger):
@@ -355,6 +355,8 @@ class Problem(BaseModel):
     best_code: str = Field(default="", description="best code")
     best_score: int = Field(default=0, description="best score")
 
+    solution: str =  Field(default="", description="solution guide")
+
     starting_time: int = Field(None, description="started epoch time in integer") # to initiate as None
     
     submit_folder: Path = Field(default=None, description="The path to the output file") #regulate the output file path; tbd
@@ -400,6 +402,27 @@ def load_problem_v2024(problem_name: str, problem_dir: pathlib.Path) -> Problem:
         submit_folder=submit_folder,
     )
 
+def load_problem_training(problem_name: str, problem_dir: pathlib.Path) -> Problem:
+    problem_input = problem_dir / f"{problem_name}.in"
+    problem_output = problem_dir / f"{problem_name}.out"
+    sample_input = problem_dir / f"{problem_name}_sample_input.txt"
+    sample_output = problem_dir / f"{problem_name}_sample_output.txt"
+    problem_description = problem_dir / f"{problem_name}.md"
+    best_code = problem_dir / f"{problem_name}.cpp"
+    submit_folder = "./to_submit/"
+    solution = problem_dir / f"{problem_name}_sol.md"
+    return Problem(
+        problem_dir=problem_dir,
+        problem_name=problem_name,
+        problem_description=problem_description.read_text(),
+        sample_input=sample_input.read_text(),
+        sample_output=sample_output.read_text(),
+        problem_input=problem_input,
+        problem_output=problem_output,
+        submit_folder=submit_folder,
+        best_code=best_code.read_text(),
+        solution=solution.read_text(),
+    )
 
 def load_problem(problem_name: str, problem_dir: pathlib.Path) -> Problem:
     problem_input = problem_dir / f"{problem_name}.in"

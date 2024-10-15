@@ -234,13 +234,16 @@ class Trainer:
 
         return solution_list
     
+    def analyzer_provide_N(self,):
+        return
+    
     def solve_problem_pro(self,):
         """
         Solves the problem using a professional approach.
         """
         self.messages.append({
             'role': 'user',
-            'content': self.problem.as_xml,
+            'content': initial_advisor_prompt.format(problem=self.problem.as_xml),
         })
         out = self.llm.run_messages(messages=self.messages)
         self.messages.append({
