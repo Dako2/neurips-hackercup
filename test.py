@@ -22,7 +22,185 @@ from lib.prompts import (
     OUTPUT_FORMAT_CLASSIFIER,
 )
 from solution import SolutionManager, Solution
+import math
+import random
 
+class Node:
+    def __init__(self, state, parent=None, evaluation=None):
+        self.state = state  # The current solution or state
+        self.parent = parent  # Reference to the parent node
+        self.children = []  # List of child nodes
+        self.visits = 0  # Number of times this node has been visited
+        self.score = 0  # The evaluation score of this node
+        self.evaluation = evaluation  # Store the evaluation feedback
+    
+    def add_child(self, child_state):
+        """Add a child node to this node."""
+        child = Node(state=child_state, parent=self)
+        self.children.append(child)
+        return child
+    
+    def update_score(self, value):
+        """Update score and visits, typical for backpropagation in MCTS."""
+        self.score += value
+        self.visits += 1
+        if self.parent:
+            self.parent.update_score(value)  # Propagate the score up the tree
+
+class MCTS:
+    def __init__(self, llm_model, problem, logger=None):
+        self.root = Node(state=None)  # The initial root node
+        self.problem = problem
+        if not logger:
+            self.logger = create_logger(f'logs/MCTS_{problem.problem_name}_{llm_model}.log', f'{problem.problem_name}_{llm_model}')
+        self.llm = LLM(model_name=llm_model)
+        self.fast_llm = LLM(model_name=llm_model)
+        self.sm = SolutionManager()
+        self.model_name = llm_model
+    
+    def ucb1(self, node, exploration_weight=1.4):
+        """Calculate the UCB1 score for a node."""
+        if node.visits == 0:
+            return float('inf')  # Explore unvisited nodes first
+        return node.score / node.visits + exploration_weight * math.sqrt(math.log(node.parent.visits) / node.visits)
+    
+    def select(self, node):
+        """Select the best child node to explore based on UCB1."""
+        return max(node.children, key=lambda n: self.ucb1(n))
+        
+    def expand(self, node, problem):
+        """Expand the node by generating child nodes, incorporating evaluation feedback."""
+        # Build the prompt with previous solution and its evaluation
+        messages = self.build_prompt_with_feedback(node, problem)
+         
+        self.logger.info(f"\n\n***************: Competitor is running...***************\n\n")
+        self.logger.info(f"Input: {messages}")           
+        n = 3  # Number of child nodes to generate
+        response = self.llm.mcts_openai_messages(messages, temperature=1, n=n)
+        
+        # Generate and add child nodes based on the response
+        for i in range(n):
+            out = response.choices[i].message.content.strip()
+            self.logger.info(f"Output[{i}]: {out}")
+            child_node = node.add_child(out)
+            child_node.parent = node  # Ensure the parent is set
+            
+    def build_prompt_with_feedback(self, node, problem):
+        """Construct the prompt including previous solutions and their evaluations."""
+        # Start with the base problem description
+        prompt = f"""Your goal is to provide the TRULY correct and NO-TIMEOUT solution.
+    ## Problem:
+    {problem.problem_description}
+    """
+        # Traverse up the tree to include previous solutions and evaluations
+        current_node = node
+        conversation_history = []
+        while current_node.parent is not None:
+            # Include the assistant's previous solution and its evaluation
+            summarized_state = self.summarize_evaluation(current_node.state)
+            conversation_history.append({
+                'role': 'assistant',
+                'content': summarized_state + current_node.evaluation
+            })
+            current_node = current_node.parent
+        
+        # Reverse the conversation history to chronological order
+        conversation_history = conversation_history[::-1]
+        
+        # Construct the messages for the LLM
+        messages = [{'role': 'user', 'content': prompt}]
+        messages.extend(conversation_history)
+         
+        return messages
+    
+    def summarize_evaluation(self, evaluation_text):
+        """Summarize the evaluation text to reduce length."""
+        # For demonstration, we'll just truncate the text
+        max_length = 200  # Adjust as needed
+        if len(evaluation_text) > max_length:
+            return evaluation_text[:max_length] + '...'
+        else:
+            return evaluation_text
+
+    def simulate(self, node, problem):
+        """Run the simulation (AI solution generation and evaluation)."""
+        out = node.state  # Get the current solution
+        code = self.worker(out)  # Use the worker to process the solution
+
+        self.logger.info(f"Simulating: Output is {out}")
+        s = Solution(code, problem.problem_name, problem.sample_input_path,
+                    problem.sample_output_path, problem.full_input_path, self.model_name)
+        testreport, fullreport = s.eval()
+        self.sm.add_solution(s)
+
+        # Store the evaluation feedback in the node
+        node.evaluation = f"<sample_test>{testreport}</sample_test>\n<full_test>{fullreport}</full_test>"
+        
+        score = testreport.success_rate_number #self.evaluate_solution(testreport, fullreport)
+        self.backpropagate(node, score)
+
+        self.logger.info(f"Solution evaluated. Score: {score}")
+        return s.to_submit_signal
+
+    def evaluate_solution(self, testreport, fullreport):
+        """Evaluate the quality of the solution based on reports."""
+        # Custom evaluation logic based on test report, can return a score
+        if testreport.score:
+            return 1  # Good solution
+        return -1  # Bad solution
+        
+    def backpropagate(self, node, reward):
+        """Backpropagate the result up the tree."""
+        node.update_score(reward)
+
+    def mcts_trial(self, problem, max_steps=100):
+        step = 0
+        current_node = self.root
+
+        while step < max_steps:
+            # Selection
+            while current_node.children:
+                current_node = self.select(current_node)
+
+            # Expansion
+            self.expand(current_node, problem)
+
+            # Simulation
+            for child in current_node.children:
+                to_submit_signal = self.simulate(child, problem)
+
+                # Check if solution is ready for submission
+                if to_submit_signal:
+                    self.logger.info("Problem solved, ready for submission.")
+                    return child  # Return the successful solution
+
+            step += 1
+
+        self.logger.info("Max steps reached without finding a solution.")
+        return None  # No solution found within the step limit
+
+
+    def worker(self, assistant_output):
+        """
+        Processes assistant output to extract and verify the source code.
+        """
+        messages = [
+            {
+                'role': 'user',
+                'content': CODER_INSTRUCTIONS.format(code=assistant_output)
+            },
+        ]
+        out = self.fast_llm.run_messages(messages=messages)
+        
+        code = extract_text(out, '<source_code>')
+        code = maybe_remove_backticks(code)
+    
+        if verify_code_syntax(code):
+            #self.logger.info(f"Code syntax correct:\n{code}")
+            return code
+        else:
+            return ""
+            #raise ValueError("Source code is not compilable.")
 
 def output_format_indicator(problem, logger):
     """
@@ -40,12 +218,13 @@ def output_format_indicator(problem, logger):
     return out
 
 class Trainer:
-    def __init__(self, model_name, problem):
+    def __init__(self, model_name, problem, logger=None):
         self.problem = problem
         self.model_name = model_name
-
-        self.logger = create_logger(f'logs/{problem.problem_name}_{model_name}.log', '{problem.problem_name}_{model_name}')
+        if not logger:
+            self.logger = create_logger(f'logs/{problem.problem_name}_{model_name}.log', '{problem.problem_name}_{model_name}')
         self.llm = LLM(model_name=model_name, logger=self.logger)
+        self.fast_llm = LLM(model_name='gpt4', logger=self.logger)
         self.messages = []
         self.reflection_step = 0
         self.solution_list=[]
@@ -69,7 +248,8 @@ class Trainer:
             m()
         except:
             raise ValueError("method name error")
-    
+     
+
     def battle_ground(self):
         
         solution_list = []
@@ -111,7 +291,7 @@ class Trainer:
 
         step = 0
         id1, id2 = 1, 2
-        while step < 7:
+        while step < 5:
             step += 1
             self.logger.info(f"\n\n***************Step {step}: Competitor {id1} is running...***************\n\n")
 
@@ -121,7 +301,7 @@ class Trainer:
                     'content': prompts[id1-1]
                 },
             )
-            self.logger.info(f"Competitor#{id1} LLM Input: {prompts[id1-1]}")
+            self.logger.info(f"Competitor#{id1} LLM Input: {messages[id1-1]}")
             
             out = self.llm.run_messages(messages=messages[id1-1], temperature=1)
             code = self.worker(out)
@@ -130,7 +310,10 @@ class Trainer:
             s = Solution(code, self.problem.problem_name, self.problem.sample_input_path, self.problem.sample_output_path, self.problem.full_input_path, self.model_name)
             testreport, fullreport = s.eval()
             self.sm.add_solution(s)
-
+            if s.to_submit_signal:
+               self.logger.info(f"Problem Solved!! ready for submit")
+               break 
+            
             if fullreport and testreport:
                 self.logger.info(f"Step {step}: Competitor #{id1}'s testreport is {testreport.content} \n Full test report: {fullreport.content}\n")
             solution_list.append(s)
@@ -299,38 +482,49 @@ class Trainer:
         messages = [
             {
                 'role': 'user',
-                'content': CODER_INSTRUCTIONS + f"This is the code: {assistant_output}"
+                'content': CODER_INSTRUCTIONS.format(code=assistant_output)
             },
         ]
-        out = self.llm.run_messages(messages=messages)
+        out = self.fast_llm.run_messages(messages=messages)
         
         code = extract_text(out, '<source_code>')
         code = maybe_remove_backticks(code)
     
         if verify_code_syntax(code):
-            self.logger.info(f"Code syntax correct:\n{code}")
+            #self.logger.info(f"Code syntax correct:\n{code}")
             return code
         else:
             return ""
             #raise ValueError("Source code is not compilable.")
 
 if __name__ == '__main__':
-    problem_name = 'Prime Subtractorization'
+    #problem_name = 'Prime Subtractorization'
     #problem_name = 'Subsonic Subway'
     #problem_name = 'Substantial Losses'
 
+    #problem = load_problem_from_folder('2024', 'Round1/', problem_name, logger)
+    #logger.info(f"Solving {problem_name}")
     logger = create_logger(f'logs/trainer.log', 'trainer')
-    problem = load_problem_from_folder('2024', 'Round1/', problem_name, logger)
-    logger.info(f"Solving {problem_name}")
-
-    _ = output_format_indicator(problem, logger)
     
-    
-    model_name = 'gemini' #ranking powerful to less ['o1', 'gpt4', 'claude', 'gemini', 'gpt3.5'] from most capable to least capable 
-    trainer1 = Trainer(model_name, problem,)
+    from lib.utils import load_problem_from_folder, list_problem_names, load_problem_training
+    problem_directory = "/mnt/d/AIHackercup/dataset/2023/round2"
+    problem_names = list_problem_names(problem_directory, "2023")
+     
+    for problem_name in problem_names[2:3]:
+        problem = load_problem_training(problem_name, Path(problem_directory))
+        code = problem.best_code
+        solution_guidelines = problem.solution
 
-    sols = trainer1.battle_ground()
-    trainer1.sm.to_submit('to_submit/')
-    print(trainer1.sm.solution_manager)
+        _ = output_format_indicator(problem, logger)
+            
+        model_name = 'gpt3.5' #ranking powerful to less ['o1', 'gpt4', 'claude', 'gemini', 'gpt3.5'] from most capable to least capable 
+        #trainer1 = Trainer(model_name, problem,)
+        #sols = trainer1.battle_ground()
+        
+        mcts = MCTS(model_name, problem)
+        solution_node = mcts.mcts_trial(problem, max_steps=10)
+        print(mcts.sm.solution_manager)
+        mcts.sm.to_submit('to_submit/')
+        
 
 

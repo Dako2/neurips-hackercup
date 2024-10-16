@@ -20,6 +20,7 @@ class Solution:
     full_input_path: Path
     problem_name: str
     timestamp: str
+    id: int
 
     #evaluation result
     score: float = Field(default=None) #[None, 0->1]
@@ -38,6 +39,7 @@ class Solution:
     def __init__(self, code, problem_name, sample_input_path, sample_output_path, full_input_path, model_capability): #generating test report of sample data and full eval 
         
         self.solution_folder = "generated/"
+        self.id = int(time.time())
         os.makedirs(self.solution_folder, exist_ok=True)
         self.timestamp = datetime.datetime.now().strftime("%y-%m-%d-%M-%f")
         self.problem_name = problem_name
@@ -45,12 +47,24 @@ class Solution:
         self.sample_input_path = sample_input_path
         self.full_input_path = full_input_path
         self.sample_output_path = sample_output_path
-        self.code_path = self.solution_folder + problem_name + f'_{self.timestamp}.py'
-        with open(self.code_path, 'w') as f:
-            f.write(code)
+
         self.testreport = None
-        self.full_testreport = None
+        self.full_testreport = TestReport(
+            total=0,
+            failed=0,
+            success_rate=format(0, ".0%"),
+            success_rate_number=0.0,
+            success_rate_full=format(0, ".0%"),
+            failed_full=0,    
+            status="pending", 
+            message=f"not evaluated",
+            output=f"",
+            time_collapse=0
+        )
+        self.full_output_status = self.full_testreport.status
         self.model_capability = model_capability
+
+        self.to_submit_signal = False
         
     def eval(self):
         self.testreport = evaluator_sample(self.code, self.sample_input_path, self.sample_output_path)
@@ -58,15 +72,27 @@ class Solution:
         with open(self.sample_eval_report_path, 'w') as outfile:
             outfile.write(self.testreport.message)
 
-        self.score = self.testreport.success_rate_number
+        self.score = round(self.testreport.success_rate_number, 2)
         self.sample_eval_report = self.testreport.message
         self.sample_time_collapse = self.testreport.time_collapse
         self.sample_eval_status = self.testreport.status
-        if self.testreport.status not in ["error", "timeout"]:
-            self.full_output_path = self.solution_folder + self.problem_name + f'_{self.timestamp}_full_out.txt'
+        
+        if self.testreport.status in ["passed"]:#not in ["error", "timeout"]:
+            self.full_output_path = self.solution_folder + self.problem_name + f'_{self.score}_{self.timestamp}_full_out.txt'
             self.full_testreport = generate_full(self.code, self.full_input_path, self.full_output_path)
             self.full_output_status = self.full_testreport.status
+            if self.full_output_status in ["complete"]:
+                self.to_submit_signal=True
+        
+        self.code_path = self.solution_folder + self.problem_name + f'_{self.score}_{self.timestamp}.py'
+        with open(self.code_path, 'w') as f:
+            f.write(self.code)        
         return self.testreport, self.full_testreport
+
+    def gen_full(self):
+        self.full_output_path = self.solution_folder + self.problem_name + f'_{self.score}_{self.timestamp}_full_out.txt'
+        self.full_testreport = generate_full(self.code, self.full_input_path, self.full_output_path)
+        self.full_output_status = self.full_testreport.status
     
     @property
     def check(self):
@@ -78,6 +104,7 @@ class Solution:
     @property
     def value(self):
         return {
+            'id': self.id,
             'eval_status': self.sample_eval_status, #success, fail
             'full_status': self.full_output_status, #success, fail
             'score': self.score,
@@ -94,8 +121,10 @@ class Solution:
 class SolutionManager:
     def __init__(self):
         self.solution_manager = pd.DataFrame()
+        self.sol_dic = {}
 
     def add_solution(self, solution):
+        self.sol_dic[solution.id] = solution
         new_solution_df = pd.DataFrame([solution.value])
         self.solution_manager = pd.concat(
             [self.solution_manager, new_solution_df], 
@@ -163,16 +192,23 @@ class SolutionManager:
         """
         os.makedirs(parent_folder, exist_ok=True)
         
-        sol = self.best_solution()
+        bs = self.best_solution() #pd row
+        sol = self.sol_dic[bs['id']] #solution class
+        full_output_path = bs['full_output_path']
 
-        if sol.empty or pd.isna(sol['code_path']) or pd.isna(sol['full_output_path']):
+        if bs['full_status'] in ['pending', None, 'timeout']:
+            full_output_path = sol.solution_folder + sol.problem_name + f'_{sol.score}_{sol.timestamp}_full_out.txt'
+            full_testreport = generate_full(sol.code, sol.full_input_path, full_output_path, timeout=45)
+ 
+        if bs.empty or pd.isna(bs['code_path']) or pd.isna(bs['full_output_path']):
             raise ValueError("Best solution or required paths not found")
         try:
-            sample_path = os.path.join(parent_folder, Path(sol['full_output_path']).name+'.eval')
+            sample_path = os.path.join(parent_folder, Path(bs['full_output_path']).name+'.sample_eval')
             with open(sample_path, 'w') as outfile:
                 outfile.write(sol.sample_eval_report)
-            shutil.copy2(sol['code_path'], os.path.join(parent_folder, Path(sol['code_path']).name))
-            shutil.copy2(sol['full_output_path'], os.path.join(parent_folder, Path(sol['full_output_path']).name))
+            shutil.copy2(bs['code_path'], os.path.join(parent_folder, Path(bs['code_path']).name))
+            shutil.copy2(full_output_path, os.path.join(parent_folder, Path(bs['full_output_path']).name))
+
         except Exception as e:
             raise ValueError(f"Submission failed: {e}")
         

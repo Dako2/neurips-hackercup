@@ -12,7 +12,7 @@ import multiprocessing
 import pyzipper  # Used if unzip functionality is required
 
 # Custom module imports
-from test import Trainer, output_format_indicator
+from test import Trainer, output_format_indicator,MCTS
 from lib.utils import load_problem_from_folder, create_logger, unzip_questions
 
 import concurrent.futures
@@ -46,100 +46,73 @@ def unzip_questions_if_needed():
     else:
         logging.info("Questions already unzipped.")
 
-def run_all_questions(selected_questions):
+def run_all_questions(problem_list):
     """
     Runs the main function for all selected questions using multiprocessing.
     """
     start_time = time.time()
     with ProcessPoolExecutor() as executor:
-        executor.map(main, selected_questions)
+        executor.map(solver, problem_list)
 
     end_time = time.time()
     total_seconds = end_time - start_time
     logging.info(
-        f"Total time taken for {len(selected_questions)} questions: "
+        f"Total time taken for {len(problem_list)} questions: "
         f"{total_seconds:.0f} seconds / {total_seconds / 60:.1f} minutes"
     )
 
-def main(selected_question_index):
-    problem_names = [f.name for f in CODE_PARENT_FOLDER.iterdir() if f.is_dir()]
-    try:
-        problem_name = problem_names[selected_question_index]
-        logger.info(f"Processing problem: {problem_name}")
-    except IndexError:
-        logging.error(f"Selected question index {selected_question_index + 1} is out of range.")
-        return
-    logger = create_logger(f'logs/trainer_{selected_question_index}.log', f'trainer{selected_question_index}')
-    problem = load_problem_from_folder('2024', CODE_PARENT_FOLDER, problem_name, logger)
-    logger.info(f"Solving {problem_name}")
-    logger.info(f"Plans {plans}")
-    # List of model-capability pairs along with the method to be called
-    plans = [
-        ('gpt3.5', "solve_problem_pro"),  # 'openai' model with 'gpt4' capability
-        #('gpt4', "reflection_pro"),  # 'gemini' model with 'chain_of_thoughts' method
-        #('gpt4', "chain_of_thoughts"),  # 'gemini' model with 'chain_of_thoughts' method
-    ]
-    logger.info(f"Solving {problem_name}")
-    solver(problem, plans, logger)
-
-def solve_problem(trainer_method, problem, model_name, model_capability_ranking, sm, logger):
-    logger.info(f"Starting to solve with {model_name}, using {trainer_method.__name__}...")
-    try:
-        code = trainer_method()
-        if not code:
-            logger.warning(f"No solutions returned by {trainer_method.__name__} for problem {problem.problem_name}")
-        # Evaluate and add solutions
-        s = Solution(code, problem.problem_name, problem.sample_input_path, problem.sample_output_path, problem.full_input_path, model_name)
-        print("s", flush=True)
-        testreport, full_testreport = s.eval()
-        logger.info(f"Evaluating solution: {testreport}")
-        sm.add_solution(s)
-        logger.info(f"Solution added for {problem.problem_name}")
-    except Exception as e:
-        logger.error(f"Error solving {problem.problem_name} with {model_name}: {e}")
-
-def solver(problem, plans, logger):
-    _ = output_format_indicator(problem, logger)
-    sm = SolutionManager()
-    logger.info("solution manager created")
-    # Use ThreadPoolExecutor for parallel processing
-    with concurrent.futures.ThreadPoolExecutor() as executor:
-        # Submit tasks to the thread pool
-        futures = []
-        for model_name, method in plans:
-            # Submit the bound method (solve_problem_pro or chain_of_thoughts)
-            futures.append(executor.submit(solve_problem, model_name, method, sm))
-        # Wait for all threads to finish
-        for future in concurrent.futures.as_completed(futures):
-            try:
-                future.result()  # This will raise an exception if something went wrong in the thread
-            except Exception as e:
-                logger.error(f"Error in thread: {e}")
-    # Once all threads are done, submit the solutions
-    logger.info(f"{sm.solution_manager}")
-    logger.info(f"{problem.problem_name} problem solved")
-    sm.to_submit('to_submit/')
-
-def solve_problem(model_name, method, sm):
-    # Call the provided method directly (either solve_problem_pro or chain_of_thoughts)
-        # Initialize the trainer
-    trainer = Trainer(model_name, problem)
-    solutions = trainer.run(method)
-    # Evaluate the solution
-    for s in list(solutions):
-        testreport, full_testreport = s.eval()
-        # Add the solution to the solution manager
-        sm.add_solution(s)
+def solver1(problem):
+    logger = create_logger(f'logs/trainer_{problem.problem_name}.log', f'trainer{problem.problem_name}')
+    logger.info(f"Solving {problem.problem_name}")
         
+    _ = output_format_indicator(problem, logger)
+        
+    model_name = 'gpt4' #ranking powerful to less ['o1', 'gpt4', 'claude', 'gemini', 'gpt3.5'] from most capable to least capable 
+    trainer1 = Trainer(model_name, problem,)
+
+    sols = trainer1.battle_ground()
+    trainer1.sm.to_submit('to_submit/')
+    logger.info(trainer1.sm.solution_manager.to_string())
+
+def solver(problem):
+    logger = create_logger(f'logs/trainer_{problem.problem_name}.log', f'trainer{problem.problem_name}')
+    logger.info(f"Solving {problem.problem_name}")
+       
+    model_name = 'gpt4' #ranking powerful to less ['o1', 'gpt4', 'claude', 'gemini', 'gpt3.5'] from most capable to least capable 
+    #trainer1 = Trainer(model_name, problem,)
+    #sols = trainer1.battle_ground()
+    mcts = MCTS(model_name, problem)
+    solution_node = mcts.mcts_trial(problem, max_steps=10)
+    print(mcts.sm.solution_manager)
+    mcts.sm.to_submit('to_submit/')
+    logger.info(mcts.sm.solution_manager.to_string())
+
+
 if __name__ == "__main__":
-    unzip_questions_if_needed()
+    #unzip_questions_if_needed()
+    
+    from lib.utils import load_problem_from_folder, list_problem_names, load_problem_training, load_problem_v2024
+    from pathlib import Path
+    
+    #problem_directory = "/mnt/d/AIHackercup/dataset/2023/round3"
+    #problem_names = list_problem_names(problem_directory, "2023")
+    #problem_list = []
+    #for problem_name in problem_names:
+    #    problem_list.append(load_problem_training(problem_name, Path(problem_directory)))
+
+    problem_directory = "/mnt/d/AIHackercup/dataset/2024/round1"
+    problem_names = list_problem_names(problem_directory, "2024")
+    problem_list = []
+    for problem_name in problem_names:
+        problem_list.append(load_problem_v2024(problem_name, Path(problem_directory)))
 
     # Uncomment the following line if unzipping is needed
     if len(sys.argv) > 1:
         # Convert command-line arguments to zero-based indices
         selected_questions = [int(arg) - 1 for arg in sys.argv[1:] if arg.isdigit()]
         if selected_questions:
-            run_all_questions(selected_questions)
+            problem_list = [problem_list[x] for x in selected_questions]
+            run_all_questions(problem_list)
         else:
             logging.warning("No valid problems selected to solve.")
     else:

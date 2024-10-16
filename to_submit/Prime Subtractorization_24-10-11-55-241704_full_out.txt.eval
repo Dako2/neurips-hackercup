@@ -1,9 +1,0 @@
-<expected>
-Case #1: 2
-Case #2: 3
-</expected>
----
-<got>
-Case #1: 3
-Case #2: 3
-</got>

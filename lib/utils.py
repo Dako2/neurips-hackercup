@@ -331,7 +331,7 @@ def format_response_python(text: str, model: Any) -> Any:
     # If model type does not match, return None
     return None
 
-class Problem(BaseModel):
+class Problem(BaseModel):   
     problem_dir: Optional[pathlib.Path] = Field(
         default=None, description="The path to the problem directory"
     )
@@ -417,11 +417,15 @@ def load_problem_training(problem_name: str, problem_dir: pathlib.Path) -> Probl
         problem_description=problem_description.read_text(),
         sample_input=sample_input.read_text(),
         sample_output=sample_output.read_text(),
+        sample_input_path=sample_input,
+        sample_output_path=sample_output,
         problem_input=problem_input,
         problem_output=problem_output,
         submit_folder=submit_folder,
         best_code=best_code.read_text(),
         solution=solution.read_text(),
+        full_input_path=problem_input,
+        full_output_path=problem_output,
     )
 
 def load_problem(problem_name: str, problem_dir: pathlib.Path) -> Problem:

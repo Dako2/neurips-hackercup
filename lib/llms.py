@@ -171,7 +171,7 @@ class LLM:
                 n = n,
             )        
         # Extract the response content
-        self.response = response.choices[0].message.content.strip()
+        self.response = response
         #self.logger.info(f"\n********Openai reponse:{self.response}\n*********")
         return self.response
     
@@ -294,7 +294,8 @@ if __name__ == "__main__":
     
     problem_directory = "/mnt/d/AIHackercup/dataset/2023/round2"
     problem_names = list_problem_names(problem_directory, "2023")
-    for problem_name in problem_names:
+
+    for problem_name in problem_names[:1]:
         problem = load_problem_training(problem_name, Path(problem_directory))
         code = problem.best_code
         solution_guidelines = problem.solution
@@ -316,6 +317,7 @@ if __name__ == "__main__":
                     ),
                 }
             ]
-            response = llm.run_messages(messages)
-            print(f"##{model}:",response)
+            response = llm.mcts_openai_messages(messages, n =2)
+            print(f"##{model}:",response.choices[0].message.content.strip())
+            print(f"##{model}:",response.choices[1].message.content.strip())
             #print(type(transform_to_gemini(messages)))
