@@ -8,7 +8,7 @@ import logging
 
 # Load environment variables from .env file
 load_dotenv()
-
+ 
 def transform_to_gemini(messages_chatgpt):
     messages_gemini = []
     system_promt = ''

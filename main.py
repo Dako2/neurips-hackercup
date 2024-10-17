@@ -7,12 +7,13 @@ import pathlib
 import logging
 import time
 import multiprocessing
+from mtcs_v2 import MCTS
 
 # Third-party imports
 import pyzipper  # Used if unzip functionality is required
 
 # Custom module imports
-from test import Trainer, output_format_indicator,MCTS
+from test import Trainer, output_format_indicator
 from lib.utils import load_problem_from_folder, create_logger, unzip_questions
 
 import concurrent.futures
@@ -67,7 +68,7 @@ def solver1(problem):
         
     _ = output_format_indicator(problem, logger)
         
-    model_name = 'gpt4' #ranking powerful to less ['o1', 'gpt4', 'claude', 'gemini', 'gpt3.5'] from most capable to least capable 
+    model_name = 'gpt3.5' #ranking powerful to less ['o1', 'gpt4', 'claude', 'gemini', 'gpt3.5'] from most capable to least capable 
     trainer1 = Trainer(model_name, problem,)
     logger.info(trainer1.sm.solution_manager)
     sols = trainer1.battle_ground()
@@ -78,7 +79,7 @@ def solver(problem):
     logger = create_logger(f'logs/trainer_{problem.problem_name}.log', f'trainer{problem.problem_name}')
     logger.info(f"Solving {problem.problem_name}")
        
-    model_name = 'o1' #ranking powerful to less ['o1', 'gpt4', 'claude', 'gemini', 'gpt3.5'] from most capable to least capable 
+    model_name = 'gpt4' #ranking powerful to less ['o1', 'gpt4', 'claude', 'gemini', 'gpt3.5'] from most capable to least capable 
     #trainer1 = Trainer(model_name, problem,)
     #sols = trainer1.battle_ground()
     mcts = MCTS(model_name, problem)
@@ -94,7 +95,8 @@ if __name__ == "__main__":
     from lib.utils import load_problem_from_folder, list_problem_names, load_problem_training, load_problem_v2024
     from pathlib import Path
     
-    problem_directory = "/mnt/d/AIHackercup/dataset/2023/round3"
+    problem_directory = "/mnt/d/AIHackercup/dataset/2023/round2"
+    problem_directory = "dataset/2023/round2"
     problem_names = list_problem_names(problem_directory, "2023")
     problem_list = []
     for problem_name in problem_names:

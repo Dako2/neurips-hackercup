@@ -79,7 +79,7 @@ class MCTS:
          
         self.logger.info(f"\n\n***************: Competitor is running...***************\n\n")
         self.logger.info(f"Input: {messages}")           
-        n = 3  # Number of child nodes to generate
+        n = 2  # Number of child nodes to generate
         response = self.llm.mcts_openai_messages(messages, temperature=1, n=n)
         
         # Generate and add child nodes based on the response
