@@ -54,7 +54,7 @@ class MCTS:
         if not logger:
             self.logger = create_logger(f'logs/MCTS_{problem.problem_name}_{llm_model}.log', f'{problem.problem_name}_{llm_model}')
         self.llm = LLM(model_name=llm_model)
-        self.fast_llm = LLM(model_name=llm_model)
+        self.fast_llm = LLM(model_name='gpt4')
         self.sm = SolutionManager()
         self.model_name = llm_model
     
@@ -64,7 +64,11 @@ class MCTS:
             return float('inf')  # Explore unvisited nodes first
         return node.score / node.visits + exploration_weight * math.sqrt(math.log(node.parent.visits) / node.visits)
     
-    def select(self, node):
+    def select(self, node): #select_best_child
+        """Select the child with the highest score-to-visit ratio."""
+        return max(node.children, key=lambda n: n.score / n.visits if n.visits > 0 else float('inf'))
+
+    def select1(self, node):
         """Select the best child node to explore based on UCB1."""
         return max(node.children, key=lambda n: self.ucb1(n))
         
@@ -113,16 +117,16 @@ class MCTS:
          
         return messages
     
-    def summarize_evaluation(self, evaluation_text):
+    def summarize_evaluation(self, evaluation_text): #TODO
         """Summarize the evaluation text to reduce length."""
         # For demonstration, we'll just truncate the text
         max_length = 200  # Adjust as needed
         if len(evaluation_text) > max_length:
-            return evaluation_text[:max_length] + '...'
+            return evaluation_text[-max_length:] + '...' #TODO CHECK
         else:
             return evaluation_text
 
-    def simulate(self, node, problem):
+    def simulate(self, node, problem): #evaluation
         """Run the simulation (AI solution generation and evaluation)."""
         out = node.state  # Get the current solution
         code = self.worker(out)  # Use the worker to process the solution
@@ -135,25 +139,28 @@ class MCTS:
 
         # Store the evaluation feedback in the node
         node.evaluation = f"<sample_test>{testreport}</sample_test>\n<full_test>{fullreport}</full_test>"
-        
+        if fullreport:
+            if fullreport.status not in ["timeout"]:
+                score = -.2 #penality for timeout
         score = testreport.success_rate_number #self.evaluate_solution(testreport, fullreport)
+
         self.backpropagate(node, score)
 
         self.logger.info(f"Solution evaluated. Score: {score}")
         return s.to_submit_signal
-
-    def evaluate_solution(self, testreport, fullreport):
-        """Evaluate the quality of the solution based on reports."""
-        # Custom evaluation logic based on test report, can return a score
-        if testreport.score:
-            return 1  # Good solution
-        return -1  # Bad solution
         
-    def backpropagate(self, node, reward):
+    def backpropagate1(self, node, reward):
         """Backpropagate the result up the tree."""
         node.update_score(reward)
 
-    def mcts_trial(self, problem, max_steps=100):
+    def backpropagate(self, node, reward):
+        """Backpropagate the result up the tree."""
+        current_node = node
+        while current_node is not None:
+            current_node.update_score(reward)
+            current_node = current_node.parent
+
+    def mcts_trial(self, problem, max_steps=10):#mcts_trial method orchestrates the MCTS process:
         step = 0
         current_node = self.root
 
@@ -315,7 +322,7 @@ class Trainer:
                break 
             
             if fullreport and testreport:
-                self.logger.info(f"Step {step}: Competitor #{id1}'s testreport is {testreport.content} \n Full test report: {fullreport.content}\n")
+                self.logger.info(f"Step {step}: Competitor #{id1}'s testreport is {testreport.content} \n Full test report: {fullreport.message}\n")
             solution_list.append(s)
             
             messages[id1-1].append(
@@ -328,7 +335,8 @@ class Trainer:
             prompts[id2-1] = f"##Competitor #{id1} provided this <competitor_{id1}_solution>{code}</competitor_{id1}_solution>\n ##The Evaluation Results of Competitor #{id1}'s solution:\n <sample_test>{testreport}</sample_test> <full_test>{fullreport}</full_test>"
             
             id1,id2 = id2,id1
-
+        self.logger.info(f"{solution_list}\n")
+            
         return solution_list
     
     def interpreter(self):
@@ -491,7 +499,7 @@ class Trainer:
         code = maybe_remove_backticks(code)
     
         if verify_code_syntax(code):
-            #self.logger.info(f"Code syntax correct:\n{code}")
+            self.logger.info(f"Refactor the code=================\nCode syntax correct:\n{code}")
             return code
         else:
             return ""

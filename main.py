@@ -69,24 +69,24 @@ def solver1(problem):
         
     model_name = 'gpt4' #ranking powerful to less ['o1', 'gpt4', 'claude', 'gemini', 'gpt3.5'] from most capable to least capable 
     trainer1 = Trainer(model_name, problem,)
-
+    logger.info(trainer1.sm.solution_manager)
     sols = trainer1.battle_ground()
     trainer1.sm.to_submit('to_submit/')
-    logger.info(trainer1.sm.solution_manager.to_string())
+    
 
 def solver(problem):
     logger = create_logger(f'logs/trainer_{problem.problem_name}.log', f'trainer{problem.problem_name}')
     logger.info(f"Solving {problem.problem_name}")
        
-    model_name = 'gpt4' #ranking powerful to less ['o1', 'gpt4', 'claude', 'gemini', 'gpt3.5'] from most capable to least capable 
+    model_name = 'o1' #ranking powerful to less ['o1', 'gpt4', 'claude', 'gemini', 'gpt3.5'] from most capable to least capable 
     #trainer1 = Trainer(model_name, problem,)
     #sols = trainer1.battle_ground()
     mcts = MCTS(model_name, problem)
     solution_node = mcts.mcts_trial(problem, max_steps=10)
-    print(mcts.sm.solution_manager)
+    #print(mcts.sm.solution_manager)
+    logger.info(mcts.sm.solution_manager)
     mcts.sm.to_submit('to_submit/')
-    logger.info(mcts.sm.solution_manager.to_string())
-
+    
 
 if __name__ == "__main__":
     #unzip_questions_if_needed()
@@ -94,17 +94,17 @@ if __name__ == "__main__":
     from lib.utils import load_problem_from_folder, list_problem_names, load_problem_training, load_problem_v2024
     from pathlib import Path
     
-    #problem_directory = "/mnt/d/AIHackercup/dataset/2023/round3"
-    #problem_names = list_problem_names(problem_directory, "2023")
-    #problem_list = []
-    #for problem_name in problem_names:
-    #    problem_list.append(load_problem_training(problem_name, Path(problem_directory)))
-
-    problem_directory = "/mnt/d/AIHackercup/dataset/2024/round1"
-    problem_names = list_problem_names(problem_directory, "2024")
+    problem_directory = "/mnt/d/AIHackercup/dataset/2023/round2"
+    problem_names = list_problem_names(problem_directory, "2023")
     problem_list = []
     for problem_name in problem_names:
-        problem_list.append(load_problem_v2024(problem_name, Path(problem_directory)))
+        problem_list.append(load_problem_training(problem_name, Path(problem_directory)))
+
+    #problem_directory = "/mnt/d/AIHackercup/dataset/2024/Round1"
+    #problem_names = list_problem_names(problem_directory, "2024")
+    #problem_list = []
+    #for problem_name in problem_names:
+    #    problem_list.append(load_problem_v2024(problem_name, Path(problem_directory)))
 
     # Uncomment the following line if unzipping is needed
     if len(sys.argv) > 1:
