@@ -94,7 +94,7 @@ if __name__ == "__main__":
     from lib.utils import load_problem_from_folder, list_problem_names, load_problem_training, load_problem_v2024
     from pathlib import Path
     
-    problem_directory = "/mnt/d/AIHackercup/dataset/2023/round2"
+    problem_directory = "/mnt/d/AIHackercup/dataset/2023/round3"
     problem_names = list_problem_names(problem_directory, "2023")
     problem_list = []
     for problem_name in problem_names:

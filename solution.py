@@ -77,7 +77,7 @@ class Solution:
         self.sample_time_collapse = self.testreport.time_collapse
         self.sample_eval_status = self.testreport.status
         
-        if self.testreport.status in ["passed"]:#not in ["error", "timeout"]:
+        if self.testreport.status in ["passed"]: #not in ["error", "timeout"]:
             self.full_output_path = self.solution_folder + self.problem_name + f'_{self.score}_{self.timestamp}_full_out.txt'
             self.full_testreport = generate_full(self.code, self.full_input_path, self.full_output_path)
             self.full_output_status = self.full_testreport.status
@@ -93,6 +93,7 @@ class Solution:
         self.full_output_path = self.solution_folder + self.problem_name + f'_{self.score}_{self.timestamp}_full_out.txt'
         self.full_testreport = generate_full(self.code, self.full_input_path, self.full_output_path)
         self.full_output_status = self.full_testreport.status
+        return self.full_output_path
     
     @property
     def check(self):
@@ -196,12 +197,10 @@ class SolutionManager:
         sol = self.sol_dic[bs['id']] #solution class
         full_output_path = bs['full_output_path']
 
-        if bs['full_status'] in ['pending', None, 'timeout']:
+        if bs['full_status'] in [None, 'error', 'timeout', 'pending']:
             full_output_path = sol.solution_folder + sol.problem_name + f'_{sol.score}_{sol.timestamp}_full_out.txt'
-            full_testreport = generate_full(sol.code, sol.full_input_path, full_output_path, timeout=45)
+            full_testreport = generate_full(sol.code, sol.full_input_path, full_output_path, timeout=35)
  
-        if bs.empty or pd.isna(bs['code_path']) or pd.isna(bs['full_output_path']):
-            raise ValueError("Best solution or required paths not found")
         try:
             sample_path = os.path.join(parent_folder, Path(bs['full_output_path']).name+'.sample_eval')
             with open(sample_path, 'w') as outfile:
