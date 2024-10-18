@@ -34,6 +34,9 @@ class LLM:
         self.anthro_client = None
         self.gemini_model = None
         self.openai_client_initialized = False
+        self.gemini_model_initialized = False
+        self.anthropic_model_initialized = False
+
         if not logger:
             self.logger = logging
         else:
@@ -159,7 +162,7 @@ class LLM:
                 model=model_name,
                 messages=messages,
                 temperature=temperature,  # Added temperature parameter
-                #max_tokens=1024
+                max_tokens=1024,
                 n = n,
             )        
         else:
@@ -167,13 +170,44 @@ class LLM:
                 model=model_name,
                 messages=messages,
                 # Added temperature parameter
-                #max_tokens=1024
+                max_tokens=1024,
                 n = n,
             )        
         # Extract the response content
         self.response = response
         #self.logger.info(f"\n********Openai reponse:{self.response}\n*********")
         return self.response
+
+    def mcts_openai_messages_v2(self, messages, temperature=None, model_name="gpt-4o-2024-08-06", n = 1):
+        """Call the OpenAI (GPT-4) model using the new ChatCompletion API."""
+        if not self.openai_client_initialized:
+            raise RuntimeError("OpenAI client is not initialized.")
+        if not self.gemini_model_initialized:
+            self.initialize_gemini()
+        if not self.anthropic_model_initialized:
+            self.initialize_anthropic()
+        
+        if temperature:
+            response = self.client.chat.completions.create(
+                model=model_name,
+                messages=messages,
+                temperature=temperature,  # Added temperature parameter
+                max_tokens=1024,
+                n = n,
+            )        
+        else:
+            response = self.client.chat.completions.create(
+                model=model_name,
+                messages=messages,
+                # Added temperature parameter
+                max_tokens=1024,
+                n = n,
+            )        
+        # Extract the response content
+        self.response = response
+        #self.logger.info(f"\n********Openai reponse:{self.response}\n*********")
+        return self.response
+    
     
     def initialize_gemini(self):
         """Initialize the Gemini client."""
@@ -182,8 +216,9 @@ class LLM:
             raise RuntimeError("Gemini API key not found in environment variables.")
         genai.configure(api_key=GEMINI_API_KEY)
         self.gemini_model = genai.GenerativeModel("gemini-1.5-flash")
+        self.gemini_model_initialized = True
             
-    def anthropic(self, prompt, temperature=0.7):
+    def anthropic(self, prompt, temperature=1):
         """Call the Anthropic (Claude) model."""
         if not self.anthro_client:
             raise RuntimeError("Anthropic client is not initialized.")
@@ -203,7 +238,7 @@ class LLM:
         self.response = message['completion']
         return self.response
 
-    def anthropic_messages(self, messages, temperature=0.7):
+    def anthropic_messages(self, messages, temperature=1):
         """Call the Anthropic (Claude) model."""
         if not self.anthro_client:
             raise RuntimeError("Anthropic client is not initialized.")

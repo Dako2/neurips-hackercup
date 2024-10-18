@@ -109,17 +109,17 @@ class MCTS_v2:
         conversation_history = conversation_history[::-1]
         messages = [{'role': 'user', 'content': prompt}]
         messages.extend(conversation_history)
-        messages.append({'role':'user','content':'You never agree with the above solutions, and provide the TRULY correct and NO-TIMEOUT solution.'})
+        messages.append({'role':'user','content':'Still not correct. Please provide the TRULY CORRECT and NO TIMEOUT solution.'})
 
         return messages
     
     def summarize_evaluation(self, evaluation_text):
         """Summarize the evaluation text to reduce length."""
-        max_length = 100
-        if len(evaluation_text) > max_length:
-            return evaluation_text[:max_length] + '...'+ evaluation_text[-max_length:] 
-        else:
-            return evaluation_text
+        #max_length = 100
+        #if len(evaluation_text) > max_length:
+        #    return evaluation_text[:max_length] + '...'+ evaluation_text[-max_length:] 
+        #else:
+        return evaluation_text
 
     def simulate(self, node, problem):
         """Run the simulation (AI solution generation and evaluation)."""
@@ -138,7 +138,7 @@ class MCTS_v2:
         if testreport.success_rate_number == 1.0:  # Check if all samples are correct
             if fullreport.status == "timeout":
                 score = -0.2  # Give a smaller penalty for correct but slow solutions
-                node.evaluation = f"The solution is correct but the algorithm TIMEOUT!!!! Try a faster solution@!!!!"
+                node.evaluation = f"The solution is correct but running TIMEOUT!!!! Review the problem statement. Don't refine but propose a different algorithm!"
             else:
                 score = 1.0  # Full score if correct and no timeout
                 #early termination
@@ -176,11 +176,10 @@ class MCTS_v2:
         #RAG
         b = self.rg.retrieve(f"{initial_solution}", similarity_top_k=2)
         self.logger.info(f"retrieve results: {b}")
-        prompt = f"Problem: {self.problem.problem_description}\n Some reference may useful from competitive coding handbook: {b}. Refine the solution."
-        response = self.llm.mcts_openai_messages([{'role': 'user', 'content': prompt}])
-        initial_solution1 = response.choices[0].message.content
-        
-        self.root = Node(state=initial_solution1)
+        prompt = f"##Problem: {self.problem.problem_description}\n #Initial Solution:{initial_solution} \n ##Reference: {b}. Please provide solution within 100 words."
+        #response = self.llm.mcts_openai_messages([{'role': 'user', 'content': prompt}])
+        #initial_solution1 = response.choices[0].message.content
+        self.root = Node(state=prompt)
     
     def mcts_trial(self, problem, max_steps=10):
         """Run MCTS trial to find a solution."""
