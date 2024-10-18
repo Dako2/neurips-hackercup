@@ -44,9 +44,7 @@ class Node:
         """Update score and visits, typical for backpropagation in MCTS."""
         self.score += value
         self.visits += 1
-        if self.parent:
-            self.parent.update_score(value)  # Propagate the score up the tree
-
+        
 class MCTS:
     def __init__(self, llm_model, problem, logger=None):
         self.root = Node(state=None)  # The initial root node
@@ -148,10 +146,6 @@ class MCTS:
 
         self.logger.info(f"Solution evaluated. Score: {score}")
         return s.to_submit_signal
-        
-    def backpropagate1(self, node, reward):
-        """Backpropagate the result up the tree."""
-        node.update_score(reward)
 
     def backpropagate(self, node, reward):
         """Backpropagate the result up the tree."""
@@ -505,6 +499,22 @@ class Trainer:
             return ""
             #raise ValueError("Source code is not compilable.")
 
+def print_tree(node: Node | None, level: int = 0, prefix: str = ""):
+    if node is None:
+        return
+    # Print current node with the appropriate prefix and score information
+    connector = "└─" if level > 0 and not node.parent.children[-1] == node else "├─"
+    print(f"{prefix}{connector} Node(state=node.state, Q={node.score}, visits={node.visits}, depth=)")
+    # Update the prefix for children
+    new_prefix = prefix + ("   " if connector == "└─" else "│  ")
+    # Recursively print each child
+    for idx, child in enumerate(node.children):
+        is_last_child = idx == len(node.children) - 1
+        if is_last_child:
+            print_tree(child, level + 1, new_prefix)
+        else:
+            print_tree(child, level + 1, new_prefix)
+
 if __name__ == '__main__':
     #problem_name = 'Prime Subtractorization'
     #problem_name = 'Subsonic Subway'
@@ -515,15 +525,13 @@ if __name__ == '__main__':
     logger = create_logger(f'logs/trainer.log', 'trainer')
     
     from lib.utils import load_problem_from_folder, list_problem_names, load_problem_training
-    problem_directory = "/mnt/d/AIHackercup/dataset/2023/round2"
+    
+    problem_directory = "dataset/2023/round2"
     problem_names = list_problem_names(problem_directory, "2023")
-     
-    for problem_name in problem_names[2:3]:
+    problem_list = []
+    for problem_name in problem_names[:1]:
         problem = load_problem_training(problem_name, Path(problem_directory))
-        code = problem.best_code
-        solution_guidelines = problem.solution
-
-        _ = output_format_indicator(problem, logger)
+        problem_list.append(problem)
             
         model_name = 'gpt3.5' #ranking powerful to less ['o1', 'gpt4', 'claude', 'gemini', 'gpt3.5'] from most capable to least capable 
         #trainer1 = Trainer(model_name, problem,)
@@ -532,7 +540,10 @@ if __name__ == '__main__':
         mcts = MCTS(model_name, problem)
         solution_node = mcts.mcts_trial(problem, max_steps=10)
         print(mcts.sm.solution_manager)
-        mcts.sm.to_submit('to_submit/')
+        #mcts.sm.to_submit('to_submit/')
+
+        from mtcs_v2 import print_tree
+        print_tree(mcts.root)
         
 
 

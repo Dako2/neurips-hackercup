@@ -7,7 +7,7 @@ import pathlib
 import logging
 import time
 import multiprocessing
-from mtcs_v2 import MCTS
+from mtcs_v2 import MCTS_v2
 
 # Third-party imports
 import pyzipper  # Used if unzip functionality is required
@@ -82,7 +82,7 @@ def solver(problem):
     model_name = 'gpt4' #ranking powerful to less ['o1', 'gpt4', 'claude', 'gemini', 'gpt3.5'] from most capable to least capable 
     #trainer1 = Trainer(model_name, problem,)
     #sols = trainer1.battle_ground()
-    mcts = MCTS(model_name, problem)
+    mcts = MCTS_v2(model_name, problem)
     solution_node = mcts.mcts_trial(problem, max_steps=10)
     #print(mcts.sm.solution_manager)
     logger.info(mcts.sm.solution_manager)

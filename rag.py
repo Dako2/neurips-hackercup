@@ -32,7 +32,7 @@ class RAG:
             output += node_with_score.node.text
         return response
 
-rag = RAG()
-b = rag.retrieve("Sieve of Eratosthenes", similarity_top_k=3)
+#rag = RAG()
+#b = rag.retrieve("Sieve of Eratosthenes", similarity_top_k=3)
 
 

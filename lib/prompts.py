@@ -141,13 +141,16 @@ Here is the problem statement:
 </source_code>
 """
 
-CODER_INSTRUCTIONS = """Your task is to rewrite the provided code to generate complete runnable python3 without external libraries. Do not put any comments in the code. Do not use multithreading. Generate a source code with if __main__ execution to solve the problem.
+CODER_INSTRUCTIONS = """Your task is to rewrite the provided code to generate complete runnable python3 without external libraries. 
 #Input
 {code}
 #Output
 **Formatting Instructions: Your response must follow the following xml format.**
 <source_code>
 [pure executable python source code in this section.]
+[Do not put any comments in the code. Do not use multithreading.]
+[Generate a source code with if __main__ execution to solve the problem.]
+[Remove examples, test cases and follow the original requirement in the problem statement.]
 [Please read through the input and output constraints/format in the problem statement]
 </source_code>
 """
