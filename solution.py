@@ -21,20 +21,20 @@ class Solution:
     problem_name: str
     timestamp: str
     id: int
-
-    #evaluation result
-    score: float = Field(default=None) #[None, 0->1]
-    sample_time_collapse: float = Field(default=100000.)
-    sample_eval_status: str = Field(default='pending') # ['passed', 'failed', 'empty', 'error', 'timeout', 'pending']
-    full_output_status: str = Field(default='pending') # ['complete', 'error', 'timeout', 'pending']
-    sample_eval_report: str = Field(default='')
+    
     #output
     code_path: Path = Field(default=None) #[None, "xxxx/xx.py"]
-    full_output_path: Path = Field(default=None) #[None, "xxxx/xx.txt"]
+    #evaluation result
+    score: float = Field(default=None) #[None, 0->1]
 
+    sample_time_collapse: float = Field(default=100000.)
+    
+    sample_eval_status: str = Field(default='pending') # ['passed', 'failed', 'empty', 'error', 'timeout', 'pending']
+    full_output_status: str = Field(default='pending') # ['complete', 'error', 'timeout', 'pending']
+    
+    sample_eval_report: str = Field(default='')
     #sorting info
     model_capability: str = Field(default='gpt4') # GPT4, Claude, Gemini, etc.
-    
     
     def __init__(self, code, problem_name, sample_input_path, sample_output_path, full_input_path, model_capability): #generating test report of sample data and full eval 
         
@@ -47,6 +47,7 @@ class Solution:
         self.sample_input_path = sample_input_path
         self.full_input_path = full_input_path
         self.sample_output_path = sample_output_path
+        self.full_output_path = None
 
         self.testreport = None
         self.full_testreport = TestReport(
@@ -61,27 +62,29 @@ class Solution:
             output=f"",
             time_collapse=0
         )
-        self.full_output_status = self.full_testreport.status
+        self.full_output_status = None
         self.model_capability = model_capability
 
         self.to_submit_signal = False
         
-    def eval(self):
+    def eval(self, exact_match = True):
+        
         self.testreport = evaluator_sample(self.code, self.sample_input_path, self.sample_output_path)
-        self.sample_eval_report_path = self.solution_folder + self.problem_name + f'_{self.timestamp}_sample_eval.txt'
+        self.score = round(self.testreport.success_rate_number, 2)
+
+        self.sample_eval_report_path = self.solution_folder + self.problem_name + f'_{self.score}_{self.timestamp}_sample_eval.txt'
         with open(self.sample_eval_report_path, 'w') as outfile:
             outfile.write(self.testreport.message)
 
-        self.score = round(self.testreport.success_rate_number, 2)
         self.sample_eval_report = self.testreport.message
         self.sample_time_collapse = self.testreport.time_collapse
         self.sample_eval_status = self.testreport.status
         
-        if self.testreport.status in ["passed"]: #not in ["error", "timeout"]:
+        if not exact_match or self.testreport.status in ['passed']:
             self.full_output_path = self.solution_folder + self.problem_name + f'_{self.score}_{self.timestamp}_full_out.txt'
             self.full_testreport = generate_full(self.code, self.full_input_path, self.full_output_path)
             self.full_output_status = self.full_testreport.status
-            if self.full_output_status in ["complete"]:
+            if self.full_output_status in ["complete"] and self.testreport.status in ['passed']:
                 self.to_submit_signal=True
         
         self.code_path = self.solution_folder + self.problem_name + f'_{self.score}_{self.timestamp}.py'
@@ -106,9 +109,11 @@ class Solution:
     def value(self):
         return {
             'id': self.id,
+            'problem_name': self.problem_name,
             'eval_status': self.sample_eval_status, #success, fail
             'full_status': self.full_output_status, #success, fail
             'score': self.score,
+            'code': self.code,
             'code_path': self.code_path,
             'full_output_path': self.full_output_path,
             'model_capability': self.model_capability,
@@ -120,9 +125,10 @@ class Solution:
         return list(self.value.keys())
 
 class SolutionManager:
-    def __init__(self):
+    def __init__(self, exact_match = True):
         self.solution_manager = pd.DataFrame()
         self.sol_dic = {}
+        self.exact_match = exact_match
 
     def add_solution(self, solution):
         self.sol_dic[solution.id] = solution
@@ -197,20 +203,20 @@ class SolutionManager:
         sol = self.sol_dic[bs['id']] #solution class
         full_output_path = bs['full_output_path']
 
-        if bs['full_status'] in [None, 'error', 'timeout', 'pending']:
-            full_output_path = sol.solution_folder + sol.problem_name + f'_{sol.score}_{sol.timestamp}_full_out.txt'
-            full_testreport = generate_full(sol.code, sol.full_input_path, full_output_path, timeout=35)
- 
-        try:
-            #sample_path = os.path.join(parent_folder, full_output_path+'.sample_eval')
-            #with open(sample_path, 'w') as outfile:
-            #    outfile.write(sol.sample_eval_report)
-            shutil.copy2(bs['code_path'], os.path.join(parent_folder, Path(bs['code_path']).name))
-            shutil.copy2(full_output_path, os.path.join(parent_folder, Path(bs['full_output_path']).name))
-
-        except Exception as e:
-            raise ValueError(f"Submission failed: {e}")
+        sample_path = parent_folder + '/' + sol.problem_name + f'_{sol.score}_{sol.timestamp}_sample_eval.txt'
+        with open(Path(sample_path), 'w') as outfile:
+            outfile.write(sol.sample_eval_report)
+        code_path = parent_folder + '/' + sol.problem_name + f'_{sol.score}_{sol.timestamp}.py'
+        with open(Path(code_path), 'w') as outfile:
+            outfile.write(sol.code)
         
+        #full_output_path
+        full_out_path = parent_folder + '/' + sol.problem_name + f'_{sol.score}_{sol.timestamp}_full_out.txt' 
+        if sol.full_output_status not in ['complete'] or not sol.full_output_path:
+            _ = generate_full(sol.code, sol.full_input_path, full_out_path, timeout=35)
+        else:
+            shutil.copy2(sol.full_output_path, full_out_path)
+
 async def check_correctness(program: str, input_data: str, expected_output: str, timeout: float) -> TestReport:
     return await exec_program(program, input_data, expected_output, timeout)
 
@@ -225,7 +231,7 @@ def evaluator_sample(code, sample_input_path, sample_output_path):  # sample_tes
         test_report_sample = future_report.result()
         return test_report_sample
 
-def generate_full(code, full_input_path, full_output_path, timeout=15):  # create new full output file for each case maybe
+def generate_full(code, full_input_path, full_output_path, timeout=5):  # create new full output file for each case maybe
     with ThreadPoolExecutor(max_workers=1) as executor:
         future_report = executor.submit(
             run_coroutine, 
@@ -333,10 +339,9 @@ async def exec_program(program, input_data, expected_output, timeout):
                         failed += 1
                 success_rate = format(success / len(expected_output_cases), ".0%")
                 success_rate_number = float(success / len(expected_output_cases))
-                if len(expected_output_cases) > 10:
-                    message = "Generated output is not correct."
-                else:
-                    message = f"<expected>\n{expected_output}</expected>\n---\n<got>\n{stdout.decode()}</got>"
+                 
+                message = f"<expected>\n{expected_output}</expected>\n---\n<got>\n{stdout.decode()}</got>"
+                
                 return TestReport(
                     total=total,
                     failed=failed,

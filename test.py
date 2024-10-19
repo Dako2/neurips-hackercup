@@ -9,7 +9,7 @@ from lib.utils import (
     maybe_remove_backticks,
     save_to_disk,
 )
-from lib.llms import LLM
+from lib.llms import LLM, mcts_openai_messages_v2
 from lib.prompts import (
     REFLECTION_INSTRUCTIONS_USER,
     REFLECTION_INSTRUCTIONS_SYSTEM,
@@ -53,9 +53,11 @@ class MCTS:
             self.logger = create_logger(f'logs/MCTS_{problem.problem_name}_{llm_model}.log', f'{problem.problem_name}_{llm_model}')
         self.llm = LLM(model_name=llm_model)
         self.fast_llm = LLM(model_name='gpt4')
-        self.sm = SolutionManager()
+        
         self.model_name = llm_model
-    
+        self.exact_match = output_format_indicator(problem, self.logger)
+        self.sm = SolutionManager(exact_match=self.exact_match)
+
     def ucb1(self, node, exploration_weight=1.4):
         """Calculate the UCB1 score for a node."""
         if node.visits == 0:
@@ -78,19 +80,19 @@ class MCTS:
         self.logger.info(f"\n\n***************: Competitor is running...***************\n\n")
         self.logger.info(f"Input: {messages}")           
         n = 2  # Number of child nodes to generate
-        response = self.llm.mcts_openai_messages(messages, temperature=1, n=n)
-        
+
+        response = self.llm.mcts_openai_messages(messages, temperature=1.0, n=n)
         # Generate and add child nodes based on the response
         for i in range(n):
             out = response.choices[i].message.content.strip()
             self.logger.info(f"Output[{i}]: {out}")
             child_node = node.add_child(out)
             child_node.parent = node  # Ensure the parent is set
-            
+        
     def build_prompt_with_feedback(self, node, problem):
         """Construct the prompt including previous solutions and their evaluations."""
         # Start with the base problem description
-        prompt = f"""Your goal is to provide the TRULY correct and NO-TIMEOUT solution.
+        prompt = f"""The goal is to get a TRULY CORRECT and NO-Timeout solution.
     ## Problem:
     {problem.problem_description}
     """
@@ -100,10 +102,12 @@ class MCTS:
         while current_node.parent is not None:
             # Include the assistant's previous solution and its evaluation
             summarized_state = self.summarize_evaluation(current_node.state)
-            conversation_history.append({
+            conversation_history.append(
+            {
                 'role': 'assistant',
-                'content': summarized_state + current_node.evaluation
-            })
+                'content': summarized_state + current_node.evaluation,
+            },)
+ 
             current_node = current_node.parent
         
         # Reverse the conversation history to chronological order
@@ -112,17 +116,18 @@ class MCTS:
         # Construct the messages for the LLM
         messages = [{'role': 'user', 'content': prompt}]
         messages.extend(conversation_history)
-         
+        
         return messages
     
     def summarize_evaluation(self, evaluation_text): #TODO
         """Summarize the evaluation text to reduce length."""
         # For demonstration, we'll just truncate the text
-        max_length = 200  # Adjust as needed
+        max_length = 650  # Adjust as needed
         if len(evaluation_text) > max_length:
-            return evaluation_text[-max_length:] + '...' #TODO CHECK
+            return evaluation_text[:max_length] + '...' + evaluation_text[-200:]  #TODO CHECK
         else:
             return evaluation_text
+        
 
     def simulate(self, node, problem): #evaluation
         """Run the simulation (AI solution generation and evaluation)."""
@@ -132,19 +137,19 @@ class MCTS:
         self.logger.info(f"Simulating: Output is {out}")
         s = Solution(code, problem.problem_name, problem.sample_input_path,
                     problem.sample_output_path, problem.full_input_path, self.model_name)
-        testreport, fullreport = s.eval()
+        testreport, fullreport = s.eval(self.exact_match)
         self.sm.add_solution(s)
 
         # Store the evaluation feedback in the node
-        node.evaluation = f"<sample_test>{testreport}</sample_test>\n<full_test>{fullreport}</full_test>"
+        node.evaluation = f"<sample_test>{testreport.message}</sample_test>\n<full_test>{fullreport.message}</full_test>"
         if fullreport:
             if fullreport.status not in ["timeout"]:
-                score = -.2 #penality for timeout
+                score = -.9 #penality for timeout
         score = testreport.success_rate_number #self.evaluate_solution(testreport, fullreport)
 
         self.backpropagate(node, score)
-
         self.logger.info(f"Solution evaluated. Score: {score}")
+
         return s.to_submit_signal
 
     def backpropagate(self, node, reward):
@@ -188,7 +193,7 @@ class MCTS:
         messages = [
             {
                 'role': 'user',
-                'content': CODER_INSTRUCTIONS.format(code=assistant_output)
+                'content': CODER_INSTRUCTIONS.format(problem=self.problem.problem_description,code=assistant_output)
             },
         ]
         out = self.fast_llm.run_messages(messages=messages)
@@ -216,7 +221,12 @@ def output_format_indicator(problem, logger):
     ]
     out = llm.run_messages(messages=messages, temperature=0.0)
     logger.info(f"{problem.problem_name} requires exact output format? {out}\n")
-    return out
+    if 'yes' in out or 'true' in out:
+        return True
+    elif 'no' in out or 'false' in out:
+        return False
+    else:
+        return False
 
 class Trainer:
     def __init__(self, model_name, problem, logger=None):
@@ -484,7 +494,7 @@ class Trainer:
         messages = [
             {
                 'role': 'user',
-                'content': CODER_INSTRUCTIONS.format(code=assistant_output)
+                'content': CODER_INSTRUCTIONS.format(problem=self.problem.problem_description,code=assistant_output)
             },
         ]
         out = self.fast_llm.run_messages(messages=messages)
@@ -533,7 +543,7 @@ if __name__ == '__main__':
         problem = load_problem_training(problem_name, Path(problem_directory))
         problem_list.append(problem)
             
-        model_name = 'gpt3.5' #ranking powerful to less ['o1', 'gpt4', 'claude', 'gemini', 'gpt3.5'] from most capable to least capable 
+        model_name = 'gpt4' #ranking powerful to less ['o1', 'gpt4', 'claude', 'gemini', 'gpt3.5'] from most capable to least capable 
         #trainer1 = Trainer(model_name, problem,)
         #sols = trainer1.battle_ground()
         

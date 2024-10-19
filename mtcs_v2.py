@@ -52,7 +52,7 @@ class Node:
         self.Q = (avg_reward + min_reward) / 2  # Average of worst and avg outcome
 
 class MCTS_v2:
-    def __init__(self, llm_model, problem, logger=None, depth_limit=5):
+    def __init__(self, llm_model, problem, logger=None, depth_limit=4):
         self.problem = problem
         self.root = Node(state=None)  # The initial root node
         self.depth_limit = depth_limit  # Set the depth limit
@@ -60,9 +60,11 @@ class MCTS_v2:
             self.logger = create_logger(f'logs/MCTS_{problem.problem_name}_{llm_model}.log', f'{problem.problem_name}_{llm_model}')
         self.llm = LLM(model_name=llm_model)
         self.fast_llm = LLM(model_name='gpt4')
+        self.strong_llm = LLM(model_name='o1')
+        
         self.sm = SolutionManager()
         self.model_name = llm_model
-        #self.rg = RAG()
+        self.rg = RAG()
     
     def ucb1(self, node, exploration_weight=1.4):
         """Calculate the UCB1 score for a node."""
@@ -81,52 +83,54 @@ class MCTS_v2:
             self.logger.info(f"Depth limit reached at node depth {node.depth}.")
             return
         messages = self.build_prompt_with_feedback(node, problem)
-        self.logger.info(f"\n\n***************: Competitor is running...***************\n\n")
-        self.logger.info(f"Input: {messages}")           
-        n = 2  # Number of child nodes to generate
+        n = 3  # Number of child nodes to generate
 
+        self.logger.info(f"\n\n\n\n----------------- expanding nodes ...-----------------")
         if True:
-            response = mcts_openai_messages_v2(messages, temperature=1, model_list = ['gemini','gpt4','anthropic'], n = 2)
+            response = mcts_openai_messages_v2(messages, temperature=1, model_list = ['gpt4','o1','o1','anthropic'], n = 2)
             for i in range(n):
                 out = response[i]['response'].strip()
                 self.logger.info(f"Output of Model [{response[i]['model']}]: {out}")
-                child_node = node.add_child(f"{out}")        
-                child_node.parent = node  # Ensure the parent is set
+                child_node = node.add_child(out)
         else:
             response = self.llm.mcts_openai_messages(messages, temperature=1, n=n)
             # Generate and add child nodes based on the response
             for i in range(n):
                 out = response.choices[i].message.content.strip()
                 child_node = node.add_child(f"{out}")
-                child_node.parent = node  # Ensure the parent is set
         
     def build_prompt_with_feedback(self, node, problem):
         """Construct the prompt including previous solutions and their evaluations."""
-        prompt = f"""## Problem: {problem.problem_description}"""
+        prompt = f"""Your goal is to provide the TRULY correct and NO-TIMEOUT solution. Problem: {problem.problem_description}"""
 
         current_node = node
         conversation_history = []
         while current_node.parent is not None:
             summarized_state = self.summarize_evaluation(current_node.state)
+            conversation_history.append(
+            {
+                'role': 'user',
+                'content': current_node.evaluation,
+            },)
             conversation_history.append({
                 'role': 'assistant',
-                'content': summarized_state + current_node.evaluation
+                'content': summarized_state,
             })
             current_node = current_node.parent
         conversation_history = conversation_history[::-1]
         messages = [{'role': 'user', 'content': prompt}]
         messages.extend(conversation_history)
-        messages.append({'role':'user','content':'Please refine the solution based on the previous information.'})
 
         return messages
     
     def summarize_evaluation(self, evaluation_text):
         """Summarize the evaluation text to reduce length."""
-        #max_length = 100
-        #if len(evaluation_text) > max_length:
-        #    return evaluation_text[:max_length] + '...'+ evaluation_text[-max_length:] 
-        #else:
-        return evaluation_text
+        max_length = 400
+        if len(evaluation_text) > max_length:
+            return evaluation_text[:max_length] + '...'+ evaluation_text[-max_length:] 
+        else:
+            return evaluation_text
+ 
 
     def simulate(self, node, problem):
         """Run the simulation (AI solution generation and evaluation)."""
@@ -136,25 +140,27 @@ class MCTS_v2:
 
         s = Solution(code, problem.problem_name, problem.sample_input_path,
                     problem.sample_output_path, problem.full_input_path, self.model_name)
+        
         testreport, fullreport = s.eval()
         self.sm.add_solution(s)
+        node.evaluation = f"\n##Sample test results: {testreport.message}\n The full test cases: {fullreport.message}"
 
-        node.evaluation = f"Sample test results: {testreport.message}\nThe full test cases: {fullreport}"
-        
+        self.logger.info(f"{problem.problem_name}: {node.evaluation}\n\n {fullreport}")
+        score = testreport.success_rate_number  # Score based on success rate for failed cases
+
+        """
         # Adjust scoring logic based on test results and timeout
         if testreport.success_rate_number == 1.0:  # Check if all samples are correct
             if fullreport.status == "timeout":
-                score = -10  # Give a smaller penalty for correct but slow solutions
+                score += -0.7  # Give a smaller penalty for correct but slow solutions
                 node.evaluation = f"The solution is correct but running TIMEOUT!!!! Review the problem statement. Don't refine but propose a different algorithm!"
             else:
                 score = 1.0  # Full score if correct and no timeout
                 #early termination
         else:
             if fullreport.status == "timeout":
-                score = -10  # Larger penalty if it's both incorrect and slow
-            else:
-                score = testreport.success_rate_number  # Score based on success rate for failed cases
-
+                score += -0.7  # Larger penalty if it's both incorrect and slow
+        """
         self.backpropagate(node, score)
         self.logger.info(f"Solution evaluated. Score: {score}")
         return s.to_submit_signal
@@ -177,16 +183,17 @@ class MCTS_v2:
 
     def zero_shot_initialization(self):
         """Generate an initial solution for the root node."""
-        prompt = f"Problem: {self.problem.problem_description}\n ##Rephrase the problem statement to be more clear and easier to understand."
+        prompt = f"#Problem:{self.problem.problem_description}\n"
         response = self.llm.mcts_openai_messages([{'role': 'user', 'content': prompt}])
         rephrased_problem_statement = response.choices[0].message.content
         #RAG
-        #b = self.rg.retrieve(f"{rephrased_problem_statement}", similarity_top_k=2)
-        #self.logger.info(f"retrieve results: {b}")
-        prompt = f"##Problem: {rephrased_problem_statement}\n Output Python3 only. Don't add comments or any explanations."
-        #response = self.llm.mcts_openai_messages([{'role': 'user', 'content': prompt}])
-        #initial_solution1 = response.choices[0].message.content
-        self.root = Node(state=prompt)
+        b = self.rg.retrieve(f"{rephrased_problem_statement}", similarity_top_k=2)
+        self.logger.info(f"retrieve results: {b}")
+        prompt = f"#Problem: {rephrased_problem_statement}\n #Some Reference: {b}"
+        response = mcts_openai_messages_v2([{'role': 'user', 'content': prompt}], temperature=1, model_list = ['o1'], n = 1)
+        for i in range(1):
+            out = response[i]['response'].strip()
+        self.root = Node(state=out)
     
     def mcts_trial(self, problem, max_steps=10):
         """Run MCTS trial to find a solution."""
@@ -238,15 +245,13 @@ def print_tree(node: Node | None, level: int = 0, prefix: str = ""):
 if __name__ == '__main__':
     from lib.utils import load_problem_from_folder, list_problem_names, load_problem_training, load_problem_v2024
     from pathlib import Path
-    
-    problem_directory = "/mnt/d/AIHackercup/dataset/2023/round2"
+
     problem_directory = "dataset/2023/round2"
     problem_names = list_problem_names(problem_directory, "2023")
     problem_list = []
     for problem_name in problem_names[:1]:
         problem = load_problem_training(problem_name, Path(problem_directory))
         problem_list.append(problem)
-
         model_name = 'gpt4'
         mcts = MCTS_v2(model_name, problem)
         solution_node = mcts.mcts_trial(problem, max_steps=10)

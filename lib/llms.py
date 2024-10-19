@@ -90,7 +90,7 @@ async def generate_response(model: str, messages, temperature: Optional[float], 
     else:
         raise ValueError(f"Unsupported model: {model}")
 
-async def mcts_openai_messages_v2_async(messages, temperature=1, model_list = ['o1','gpt4'], n = 2):
+async def mcts_openai_messages_v2_async(messages, temperature, model_list, n):
     #if n = 1, select the first one out of model_list and generate answer
     #if n = 2, random select 2 out of model_list and generate answers
     #if n = 5, random select 5 out of model_list and generate answers
@@ -123,7 +123,7 @@ async def mcts_openai_messages_v2_async(messages, temperature=1, model_list = ['
 def mcts_openai_messages_v2(
     messages: List[Dict[str, str]],
     temperature: float = 1.0,
-    model_list: List[str] = ['openai', 'gpt4', 'anthropic'],
+    model_list: List[str] = ['gpt4', 'anthropic','gemini'],
     n: int = 2
 ) -> List[Dict[str, Any]]:
     """
@@ -234,7 +234,6 @@ class LLM:
             #max_tokens=1024
         )        
         self.response = response.choices[0].message.content.strip()
-        self.logger.info(f"\n\openai reponse:{self.response}")
         return self.response
 
     def openai_ft_messages(self, messages, temperature=1):
@@ -250,7 +249,6 @@ class LLM:
         )        
         # Extract the response content
         self.response = response.choices[0].message.content.strip()
-        self.logger.info(f"\n\openai reponse:{self.response}")
         return self.response
     
     def openai_messages(self, messages, temperature=None, model_name="gpt-4o-2024-08-06"):
@@ -274,7 +272,6 @@ class LLM:
             )        
         # Extract the response content
         self.response = response.choices[0].message.content.strip()
-        #self.logger.info(f"\n********Openai reponse:{self.response}\n*********")
         return self.response
     
     def mcts_openai_messages(self, messages, temperature=None, model_name="gpt-4o-2024-08-06", n = 1):
@@ -300,7 +297,6 @@ class LLM:
             )        
         # Extract the response content
         self.response = response
-        #self.logger.info(f"\n********Openai reponse:{self.response}\n*********")
         return self.response
     
     def initialize_gemini(self):
@@ -345,7 +341,6 @@ class LLM:
         )
         print(message)
         self.response = message.content
-        self.logger.info(f"\n\gemini reponse:{self.response}")
         return self.response[0].text
 
     def gemini(self, prompt, temperature=0.7):
@@ -358,7 +353,6 @@ class LLM:
             self.response = response.text
         else:
             self.response = "No response received from Gemini."
-        self.logger.info(f"\n\gemini reponse:{self.response}")
         return self.response
 
     def run(self, prompt, temperature=0.7):
@@ -376,7 +370,7 @@ class LLM:
     
     def run_messages(self, messages, temperature=0.7):
         if self.model_name == "gpt4":
-            return self.openai_messages(messages, temperature, "gpt-4-turbo-preview")#gpt-4-turbo-preview#gpt-4o-2024-08-06
+            return self.openai_messages(messages, temperature, "gpt-4o-2024-08-06")#gpt-4-turbo-preview#gpt-4o-2024-08-06
         elif self.model_name == "gpt3.5":
             return self.openai_messages(messages, None, "gpt-3.5-turbo")
         elif self.model_name == "o1-mini":
