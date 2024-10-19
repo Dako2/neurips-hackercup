@@ -202,9 +202,9 @@ class SolutionManager:
             full_testreport = generate_full(sol.code, sol.full_input_path, full_output_path, timeout=35)
  
         try:
-            sample_path = os.path.join(parent_folder, Path(bs['full_output_path']).name+'.sample_eval')
-            with open(sample_path, 'w') as outfile:
-                outfile.write(sol.sample_eval_report)
+            #sample_path = os.path.join(parent_folder, full_output_path+'.sample_eval')
+            #with open(sample_path, 'w') as outfile:
+            #    outfile.write(sol.sample_eval_report)
             shutil.copy2(bs['code_path'], os.path.join(parent_folder, Path(bs['code_path']).name))
             shutil.copy2(full_output_path, os.path.join(parent_folder, Path(bs['full_output_path']).name))
 

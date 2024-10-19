@@ -142,6 +142,8 @@ Here is the problem statement:
 """
 
 CODER_INSTRUCTIONS = """Your task is to rewrite the provided code to generate complete runnable python3 without external libraries. 
+#Problem
+{problem}
 #Input
 {code}
 #Output

@@ -5,10 +5,139 @@ import google.generativeai as genai
 from dotenv import load_dotenv
 import ollama
 import logging 
+import random 
+from typing import List, Optional, Dict, Any
+import asyncio
+from openai import AsyncOpenAI
 
 # Load environment variables from .env file
 load_dotenv()
- 
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+if not OPENAI_API_KEY:
+    raise RuntimeError("OpenAI API key not found in environment variables.")
+openai.api_key = OPENAI_API_KEY
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+genai.configure(api_key=GEMINI_API_KEY)
+ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
+if not ANTHROPIC_API_KEY:
+    raise RuntimeError("Anthropic API key not found in environment variables.")
+
+async def fetch_gemini_response(messages, temperature, max_tokens):
+    """Call the Gemini model."""
+    gemini_model = genai.GenerativeModel("gemini-1.5-pro")
+
+    response = gemini_model.generate_content(transform_to_gemini(messages),)
+    if response:
+        response = response.text
+    else:
+        response = "No response received from Gemini."
+    return response
+
+async def fetch_o1_response(messages, max_tokens):
+    client = AsyncOpenAI()
+    response = await client.chat.completions.create(
+                model="o1-mini",
+                messages=messages,
+            )
+    return response.choices[0].message.content
+
+async def fetch_openai_response(messages, temperature, max_tokens):
+    client = AsyncOpenAI()
+    response = await client.chat.completions.create(
+                model="gpt-4",
+                messages=messages,
+                temperature=temperature,
+                tool_choice=None
+            )
+    return response.choices[0].message.content
+
+async def fetch_gpt3_response(messages, temperature, max_tokens):
+    client = AsyncOpenAI()
+    response = await client.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=messages,
+                temperature=temperature,
+                tool_choice=None
+            )
+    return response.choices[0].message.content
+
+async def fetch_anthropic_response(messages, temperature, max_tokens):
+    anthro_client = Anthropic(api_key=ANTHROPIC_API_KEY)
+    """Call the Anthropic (Claude) model."""
+    if not anthro_client:
+        raise RuntimeError("Anthropic client is not initialized.")
+    
+    message = anthro_client.messages.create(
+        model="claude-3-opus-20240229",
+        temperature=temperature,  # Added temperature parameter
+        messages=messages,
+        max_tokens=4096,
+    )
+    response = message.content
+    return response[0].text
+
+async def generate_response(model: str, messages, temperature: Optional[float], max_tokens: int) -> dict:
+    if model.lower() in ['gpt4']:
+        return await fetch_openai_response(messages, temperature, max_tokens)
+    elif model.lower() in ['gpt3.5']:
+        return await fetch_gpt3_response(messages, temperature, max_tokens)
+    elif model.lower() in ['anthropic', 'claude']:
+        return await fetch_anthropic_response(messages, temperature, max_tokens)
+    elif model.lower() in ['o1']:
+        return await fetch_o1_response(messages, max_tokens)
+    elif model.lower() in ['gemini']:
+        return await fetch_gemini_response(messages, temperature, max_tokens)
+    else:
+        raise ValueError(f"Unsupported model: {model}")
+
+async def mcts_openai_messages_v2_async(messages, temperature=1, model_list = ['o1','gpt4'], n = 2):
+    #if n = 1, select the first one out of model_list and generate answer
+    #if n = 2, random select 2 out of model_list and generate answers
+    #if n = 5, random select 5 out of model_list and generate answers
+    #asyncio return the two responses in the list
+    selected_models = random.sample(model_list, n)
+
+    # Define max_tokens or make it a parameter
+    max_tokens = 1024
+
+    # Create coroutines for each selected model
+    tasks = [
+        generate_response(model, messages, temperature, max_tokens)
+        for model in selected_models
+    ]
+        # Execute all tasks concurrently
+    responses = await asyncio.gather(*tasks, return_exceptions=True)
+
+    # Handle exceptions and collect successful responses
+    final_responses = []
+    for model, resp in zip(selected_models, responses):
+        if isinstance(resp, Exception):
+            # Handle or log the exception as needed
+            print(f"Error with model {model}: {resp}")
+            final_responses.append({'model': model, 'error': str(resp)})
+        else:
+            final_responses.append({'model': model, 'response': resp})
+
+    return final_responses
+
+def mcts_openai_messages_v2(
+    messages: List[Dict[str, str]],
+    temperature: float = 1.0,
+    model_list: List[str] = ['openai', 'gpt4', 'anthropic'],
+    n: int = 2
+) -> List[Dict[str, Any]]:
+    """
+    Synchronous wrapper for the asynchronous mcts_openai_messages_v2_async function.
+
+    :param messages: The conversation or prompts to send to the models.
+    :param temperature: Controls the randomness of the model's output.
+    :param model_list: List of available models to choose from.
+    :param n: Number of models to select and generate responses from.
+    :return: List of responses from the selected models.
+    """
+    return asyncio.run(mcts_openai_messages_v2_async(messages, temperature, model_list, n))
+
+
 def transform_to_gemini(messages_chatgpt):
     messages_gemini = []
     system_promt = ''
@@ -21,7 +150,6 @@ def transform_to_gemini(messages_chatgpt):
             messages_gemini.append({'role': 'model', 'parts': [message['content']]})
     if system_promt:
         messages_gemini[0]['parts'].insert(0, f"*{system_promt}*")
-
     return messages_gemini
     
 class LLM:
@@ -36,14 +164,11 @@ class LLM:
         self.openai_client_initialized = False
         self.gemini_model_initialized = False
         self.anthropic_model_initialized = False
-
         if not logger:
             self.logger = logging
         else:
             self.logger = logger
-
         self.client = None
-
         if self.model_name == "anthropic":
             self.initialize_anthropic()
         elif self.model_name == "gpt4" or "o1" or "o1-mini" or "gpt3.5":
@@ -177,37 +302,6 @@ class LLM:
         self.response = response
         #self.logger.info(f"\n********Openai reponse:{self.response}\n*********")
         return self.response
-
-    def mcts_openai_messages_v2(self, messages, temperature=None, model_name="gpt-4o-2024-08-06", n = 1):
-        """Call the OpenAI (GPT-4) model using the new ChatCompletion API."""
-        if not self.openai_client_initialized:
-            raise RuntimeError("OpenAI client is not initialized.")
-        if not self.gemini_model_initialized:
-            self.initialize_gemini()
-        if not self.anthropic_model_initialized:
-            self.initialize_anthropic()
-        
-        if temperature:
-            response = self.client.chat.completions.create(
-                model=model_name,
-                messages=messages,
-                temperature=temperature,  # Added temperature parameter
-                max_tokens=1024,
-                n = n,
-            )        
-        else:
-            response = self.client.chat.completions.create(
-                model=model_name,
-                messages=messages,
-                # Added temperature parameter
-                max_tokens=1024,
-                n = n,
-            )        
-        # Extract the response content
-        self.response = response
-        #self.logger.info(f"\n********Openai reponse:{self.response}\n*********")
-        return self.response
-    
     
     def initialize_gemini(self):
         """Initialize the Gemini client."""
@@ -217,7 +311,7 @@ class LLM:
         genai.configure(api_key=GEMINI_API_KEY)
         self.gemini_model = genai.GenerativeModel("gemini-1.5-flash")
         self.gemini_model_initialized = True
-            
+        
     def anthropic(self, prompt, temperature=1):
         """Call the Anthropic (Claude) model."""
         if not self.anthro_client:
@@ -267,7 +361,6 @@ class LLM:
         self.logger.info(f"\n\gemini reponse:{self.response}")
         return self.response
 
- 
     def run(self, prompt, temperature=0.7):
         """Run the selected model."""
         if self.model_name == "anthropic":
@@ -324,6 +417,17 @@ if __name__ == "__main__":
     **Output**
     """
 
+    #response = llm.run(prompt)    
+    messages=[
+        {
+            "role": "user",
+            "content": "hi!!",
+        }
+    ]
+    
+    res = mcts_openai_messages_v2(messages, temperature=1, model_list = ['gemini','gpt4','anthropic'], n = 2)
+
+    """
     from utils import load_problem_from_folder, list_problem_names, load_problem_training
     from pathlib import Path
     
@@ -352,7 +456,8 @@ if __name__ == "__main__":
                     ),
                 }
             ]
-            response = llm.mcts_openai_messages(messages, n =2)
+            response = llm.mcts_openai_messages_v2(messages, n=1)
             print(f"##{model}:",response.choices[0].message.content.strip())
             print(f"##{model}:",response.choices[1].message.content.strip())
             #print(type(transform_to_gemini(messages)))
+    """

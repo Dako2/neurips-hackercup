@@ -12,7 +12,7 @@ from lib.utils import (
     maybe_remove_backticks,
     save_to_disk,
 )
-from lib.llms import LLM
+from lib.llms import LLM, mcts_openai_messages_v2
 from lib.prompts import (
     CODER_INSTRUCTIONS,
 )
@@ -62,7 +62,7 @@ class MCTS_v2:
         self.fast_llm = LLM(model_name='gpt4')
         self.sm = SolutionManager()
         self.model_name = llm_model
-        self.rg = RAG()
+        #self.rg = RAG()
     
     def ucb1(self, node, exploration_weight=1.4):
         """Calculate the UCB1 score for a node."""
@@ -84,15 +84,22 @@ class MCTS_v2:
         self.logger.info(f"\n\n***************: Competitor is running...***************\n\n")
         self.logger.info(f"Input: {messages}")           
         n = 2  # Number of child nodes to generate
-        response = self.llm.mcts_openai_messages(messages, temperature=1, n=n)
-        
-        # Generate and add child nodes based on the response
-        for i in range(n):
-            out = response.choices[i].message.content.strip()
-            self.logger.info(f"Output[{i}]: {out}")
-            child_node = node.add_child(out)
-            child_node.parent = node  # Ensure the parent is set
 
+        if True:
+            response = mcts_openai_messages_v2(messages, temperature=1, model_list = ['gemini','gpt4','anthropic'], n = 2)
+            for i in range(n):
+                out = response[i]['response'].strip()
+                self.logger.info(f"Output of Model [{response[i]['model']}]: {out}")
+                child_node = node.add_child(f"{out}")        
+                child_node.parent = node  # Ensure the parent is set
+        else:
+            response = self.llm.mcts_openai_messages(messages, temperature=1, n=n)
+            # Generate and add child nodes based on the response
+            for i in range(n):
+                out = response.choices[i].message.content.strip()
+                child_node = node.add_child(f"{out}")
+                child_node.parent = node  # Ensure the parent is set
+        
     def build_prompt_with_feedback(self, node, problem):
         """Construct the prompt including previous solutions and their evaluations."""
         prompt = f"""## Problem: {problem.problem_description}"""
@@ -109,7 +116,7 @@ class MCTS_v2:
         conversation_history = conversation_history[::-1]
         messages = [{'role': 'user', 'content': prompt}]
         messages.extend(conversation_history)
-        messages.append({'role':'user','content':'Still not correct. Please provide the TRULY CORRECT and NO TIMEOUT solution.'})
+        messages.append({'role':'user','content':'Please refine the solution based on the previous information.'})
 
         return messages
     
@@ -123,10 +130,10 @@ class MCTS_v2:
 
     def simulate(self, node, problem):
         """Run the simulation (AI solution generation and evaluation)."""
-        out = node.state  # Get the current solution
+        out = node.state
         code = self.worker(out)  # Use the worker to process the solution
+        self.logger.info(f"Code: {code}")
 
-        self.logger.info(f"Simulating: Output is {out}")
         s = Solution(code, problem.problem_name, problem.sample_input_path,
                     problem.sample_output_path, problem.full_input_path, self.model_name)
         testreport, fullreport = s.eval()
@@ -137,14 +144,14 @@ class MCTS_v2:
         # Adjust scoring logic based on test results and timeout
         if testreport.success_rate_number == 1.0:  # Check if all samples are correct
             if fullreport.status == "timeout":
-                score = -0.2  # Give a smaller penalty for correct but slow solutions
+                score = -10  # Give a smaller penalty for correct but slow solutions
                 node.evaluation = f"The solution is correct but running TIMEOUT!!!! Review the problem statement. Don't refine but propose a different algorithm!"
             else:
                 score = 1.0  # Full score if correct and no timeout
                 #early termination
         else:
             if fullreport.status == "timeout":
-                score = -0.2  # Larger penalty if it's both incorrect and slow
+                score = -10  # Larger penalty if it's both incorrect and slow
             else:
                 score = testreport.success_rate_number  # Score based on success rate for failed cases
 
@@ -170,13 +177,13 @@ class MCTS_v2:
 
     def zero_shot_initialization(self):
         """Generate an initial solution for the root node."""
-        prompt = f"Problem: {self.problem.problem_description}\nGenerate a solution."
+        prompt = f"Problem: {self.problem.problem_description}\n ##Rephrase the problem statement to be more clear and easier to understand."
         response = self.llm.mcts_openai_messages([{'role': 'user', 'content': prompt}])
-        initial_solution = response.choices[0].message.content
+        rephrased_problem_statement = response.choices[0].message.content
         #RAG
-        b = self.rg.retrieve(f"{initial_solution}", similarity_top_k=2)
-        self.logger.info(f"retrieve results: {b}")
-        prompt = f"##Problem: {self.problem.problem_description}\n #Initial Solution:{initial_solution} \n ##Reference: {b}. Please provide solution within 100 words."
+        #b = self.rg.retrieve(f"{rephrased_problem_statement}", similarity_top_k=2)
+        #self.logger.info(f"retrieve results: {b}")
+        prompt = f"##Problem: {rephrased_problem_statement}\n Output Python3 only. Don't add comments or any explanations."
         #response = self.llm.mcts_openai_messages([{'role': 'user', 'content': prompt}])
         #initial_solution1 = response.choices[0].message.content
         self.root = Node(state=prompt)
@@ -201,7 +208,7 @@ class MCTS_v2:
 
     def worker(self, assistant_output):
         """Processes assistant output to extract and verify the source code."""
-        messages = [{'role': 'user', 'content': CODER_INSTRUCTIONS.format(code=assistant_output)}]
+        messages = [{'role': 'user', 'content': CODER_INSTRUCTIONS.format(problem=self.problem.problem_description, code=assistant_output)}]
         out = self.fast_llm.run_messages(messages=messages)
         code = extract_text(out, '<source_code>')
         code = maybe_remove_backticks(code)
