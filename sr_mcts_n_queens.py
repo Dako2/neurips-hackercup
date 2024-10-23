@@ -1,50 +1,147 @@
 import random
 import math
 import logging
+import urllib.request
+import json
+import subprocess
+import sys
+import tempfile
+from pathlib import Path
 from collections import defaultdict
+import re 
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(message)s')
 logger = logging.getLogger()
 
-# Mock LLM function (Replace with actual LLM API calls)
-def call_llm(prompt):
-    # Simulate LLM output based on the prompt
-    # In practice, use an API call to OpenAI's GPT models
-    response = """
-def two_sum(nums, target):
-    num_to_index = {}
-    for i, num in enumerate(nums):
-        complement = target - num
-        if complement in num_to_index:
-            return [num_to_index[complement], i]
-        num_to_index[num] = i
-    return []
-"""
-    return response.strip()
-
-# Mock code execution function (Replace with safe execution environment)
-def execute_code(code, test_case):
+def verify_code_syntax2(code):
+    """
+    Verifies the syntax of the provided Python code.
+    Returns (True, code) if syntax is correct, (False, error_message) otherwise.
+    """
     try:
-        # Prepare the environment
-        local_env = {}
-        exec(code, {}, local_env)
-        func = local_env.get('two_sum')
-        if func is None:
-            return False
-        # Run the test case
-        nums, target = test_case
-        result = func(nums, target)
-        # Expected results for the sample test cases
-        expected_results = {
-            (2, 7, 11, 15, 9): [0, 1],
-            (3, 2, 4, 6): [1, 2],
-            (3, 3, 6): [0, 1]
+        compile(code, '<string>', 'exec')
+        return True, code
+    except SyntaxError as e:
+        return False, str(e)
+
+def extract_text(input_string, format):
+    # Use a regex pattern to extract text between <prompt> and </prompt>
+    #match = re.search(f'{format}(.*?){format.replace('<','</')}', input_string, re.DOTALL)
+    match = re.search(f'{format}(.*?){format.replace("<", "</")}', input_string, re.DOTALL)
+
+    if match:
+        return match.group(1).strip()
+    else:
+        return input_string
+
+def extract_python_code(text):
+    # Use regex to find the content between ```python and ```
+    pattern = r"```python(.*?)```"
+    code_blocks = re.findall(pattern, text, re.DOTALL)
+
+    # Return the extracted code blocks
+    return code_blocks[0]
+    
+def maybe_remove_backticks(solution: str) -> str:
+    "Remove backticks from the solution"
+    solution = solution.strip()
+    solution = re.sub(r'^```python\s*', '', solution)
+    solution = re.sub(r'\s*```$', '', solution)
+    return solution
+
+def save_to_disk(content: str, path: Path,):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    print(content)
+    with path.open("w", encoding ="utf-8") as f:
+        f.write(content)
+
+# Function to query the LLM (your 'query_model' function)
+def call_llm(prompt, model="llama3.1", seed=None, url="http://localhost:11434/api/chat"):
+    """
+    Calls the LLM with the given prompt and returns the response.
+    """
+    if seed is None:
+        seed = random.randint(1, 1000)
+
+    messages = [
+        {
+            "role": "user",
+            "content": prompt
         }
-        expected = expected_results.get(tuple(nums + [target]), [])
-        return sorted(result) == sorted(expected)
+    ]
+
+    data = {
+        "model": model,
+        "messages": messages,
+        "options": {
+            "seed": seed,
+            "temperature": 1,
+            "num_ctx": 2048  # Ensure consistent output
+        }
+    }
+
+    payload = json.dumps(data).encode("utf-8")
+    request = urllib.request.Request(url, data=payload, method="POST")
+    request.add_header("Content-Type", "application/json")
+
+    response_data = ""
+    try:
+        with urllib.request.urlopen(request) as response:
+            while True:
+                line = response.readline().decode("utf-8")
+                if not line:
+                    break
+                response_json = json.loads(line)
+                response_data += response_json["message"]["content"]
     except Exception as e:
-        logger.debug(f"Execution error: {e}")
+        logger.error(f"LLM request failed: {e}")
+        return ""
+
+    #logger.info(f"LLM Response: {response_data}")
+    return response_data.strip()
+
+# Function to execute code safely (adapted from your 'Solution' class)
+def execute_code(code, test_case_input, test_case_output):
+    """
+    Executes the provided code with the test case input and compares the output.
+    Returns True if the output matches the expected output, False otherwise.
+    """
+    # Write the code to a temporary file
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as tmp_file:
+        tmp_file.write(code)
+        tmp_file_path = tmp_file.name
+
+    # Run the code using subprocess
+    try:
+        # Prepare the input data
+        input_data = '\n'.join(test_case_input)
+
+        # Execute the code
+        result = subprocess.run(
+            [sys.executable, tmp_file_path],
+            input=input_data,
+            text=True,
+            capture_output=True,
+            timeout=10  # Set a timeout to prevent infinite loops
+        )
+
+        # Get the output and compare with expected output
+        output = result.stdout.strip()
+        expected_output = '\n'.join(test_case_output).strip()
+
+        # Clean up the temporary file
+        Path(tmp_file_path).unlink()
+
+        return output == expected_output
+
+    except subprocess.TimeoutExpired:
+        logger.error("Code execution timed out.")
+        Path(tmp_file_path).unlink()
+        return False
+    except Exception as e:
+        logger.error(f"Error during code execution: {e}")
+        Path(tmp_file_path).unlink()
         return False
 
 class Node:
@@ -159,24 +256,38 @@ class SR_MCTS_LLM:
         self.tree_size += 1
         return child_node
 
-    def critique(self, code_state, action):
+    def critique(self, code_state, action): #manager role
         # For simplicity, we use the action as the critique
         critique = action
+        prompt = f"The following code needs improvement:\n{code_state}\nCritique: {critique}\nPlease provide a corrected and improved version of the code."
+        new_code = call_llm(prompt)
         return critique
 
-    def rewrite(self, code_state, critique):
+    def rewrite(self, code_state, critique): #worker role
         # Use LLM to generate improved code based on the critique
         prompt = f"The following code needs improvement:\n{code_state}\nCritique: {critique}\nPlease provide a corrected and improved version of the code."
         new_code = call_llm(prompt)
         return new_code
 
     def evaluate(self, node):
-        # Run the code against test cases and compute a score
-        pass_count = 0
-        for test_input, target in self.test_cases:
-            if execute_code(node.code_state, (test_input, target)):
-                pass_count += 1
-        qg = pass_count / len(self.test_cases)
+        # Verify code syntax
+        
+        code = extract_text(node.code_state, '<source_code>')
+        code = extract_python_code(code)
+        code = maybe_remove_backticks(code)
+        code_exec_flag, verified_code_or_error = verify_code_syntax2(code)
+        
+        logger.info(f"Code:''' {code}'''\n")
+        if not code_exec_flag:
+            logger.error(f"Code syntax error: {verified_code_or_error}")
+            qg = 0.0
+        else:
+            # Run the code against test cases and compute a score
+            pass_count = 0
+            for test_input_lines, test_output_lines in self.test_cases:
+                if execute_code(node.code_state, test_input_lines, test_output_lines):
+                    pass_count += 1
+            qg = pass_count / len(self.test_cases)
         ql = self.local_value(node)
         q_value = self.alpha * qg + (1 - self.alpha) * ql
         node.Q = q_value
@@ -221,20 +332,29 @@ class SR_MCTS_LLM:
 
 # Sample competitive coding problem: Two Sum
 # Given an array of integers nums and an integer target, return indices of the two numbers such that they add up to target.
+    
+from lib.utils import load_problem_from_folder, list_problem_names, load_problem_training, load_problem_v2024
+from pathlib import Path
 
-# Test cases
-test_cases = [
-    ([2, 7, 11, 15], 9),    # Expected output: [0, 1]
-    ([3, 2, 4], 6),         # Expected output: [1, 2]
-    ([3, 3], 6)             # Expected output: [0, 1]
-]
-
-# Initial code (could be empty or a simple template)
-initial_code = """
-def two_sum(nums, target):
-    # Your code here
-    pass
 """
+problem_directory = "dataset/2023/round2"
+problem_names = list_problem_names(problem_directory, "2023")
+problem_list = []
+for problem_name in problem_names:
+    problem_list.append(load_problem_training(problem_name, Path(problem_directory)))
+"""
+
+problem_directory = "contestData"
+problem_names = list_problem_names(problem_directory, "2024")
+problem_list = []
+for problem_name in problem_names:
+    problem_list.append(load_problem_v2024(problem_name, Path(problem_directory)))
+
+problem = problem_list[1]
+# Initial code (could be empty or a simple template)
+initial_code = problem.problem_description
+
+test_cases = problem.sample_input
 
 # Instantiate the SR_MCTS_LLM algorithm
 sr_mcts_llm = SR_MCTS_LLM(initial_code, test_cases, max_nodes=10)
