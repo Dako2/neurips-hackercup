@@ -32,7 +32,14 @@ def verify_code_syntax(code_str):
         return True
     except SyntaxError as e:
         return False
-    
+
+def verify_code_syntax2(code_str):
+    try:
+        compile(code_str, '<string>', 'exec')
+        return True, code_str
+    except SyntaxError as e:
+        return False, None
+
 def extract_text(input_string, format):
     # Use a regex pattern to extract text between <prompt> and </prompt>
     #match = re.search(f'{format}(.*?){format.replace('<','</')}', input_string, re.DOTALL)
@@ -42,6 +49,14 @@ def extract_text(input_string, format):
         return match.group(1).strip()
     else:
         return input_string
+
+def extract_python_code(text):
+    # Use regex to find the content between ```python and ```
+    pattern = r"```python(.*?)```"
+    code_blocks = re.findall(pattern, text, re.DOTALL)
+
+    # Return the extracted code blocks
+    return code_blocks[0]
     
 def maybe_remove_backticks(solution: str) -> str:
     "Remove backticks from the solution"

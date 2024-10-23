@@ -63,19 +63,19 @@ def run_all_questions(problem_list):
         f"{total_seconds:.0f} seconds / {total_seconds / 60:.1f} minutes"
     )
 
-def solver1(problem):
+def solver(problem):
     logger = create_logger(f'logs/trainer_{problem.problem_name}.log', f'trainer{problem.problem_name}')
     logger.info(f"Solving {problem.problem_name}")
         
     _ = output_format_indicator(problem, logger)
         
-    model_name = 'gpt4' #ranking powerful to less ['o1', 'gpt4', 'claude', 'gemini', 'gpt3.5'] from most capable to least capable 
+    model_name = 'ollama' #ranking powerful to less ['o1', 'gpt4', 'claude', 'gemini', 'gpt3.5'] from most capable to least capable 
     trainer1 = Trainer(model_name, problem,)
     logger.info(trainer1.sm.solution_manager)
     sols = trainer1.battle_ground()
     trainer1.sm.to_submit('to_submit/')
-    
-def solver(problem):
+
+def solver2(problem):
     logger = create_logger(f'logs/trainer_{problem.problem_name}.log', f'trainer{problem.problem_name}')
     logger.info(f"Solving {problem.problem_name}")
     
@@ -87,6 +87,7 @@ def solver(problem):
     #print(mcts.sm.solution_manager)
     logger.info(mcts.sm.solution_manager)
     mcts.sm.to_submit('to_submit/')
+ 
 
 if __name__ == "__main__":
     #unzip_questions_if_needed()

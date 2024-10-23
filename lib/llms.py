@@ -3,12 +3,15 @@ from anthropic import Anthropic
 import openai
 import google.generativeai as genai
 from dotenv import load_dotenv
-import ollama
+
 import logging 
 import random 
 from typing import List, Optional, Dict, Any
 import asyncio
 from openai import AsyncOpenAI
+
+from llama_index.llms.ollama import Ollama
+import json
 
 # Load environment variables from .env file
 load_dotenv()
@@ -164,6 +167,7 @@ class LLM:
         self.openai_client_initialized = False
         self.gemini_model_initialized = False
         self.anthropic_model_initialized = False
+        self.ollama_llm = None
         if not logger:
             self.logger = logging
         else:
@@ -175,36 +179,32 @@ class LLM:
             self.initialize_openai()
         elif self.model_name == "gemini":
             self.initialize_gemini()
-        elif self.model_name == "codegemma" or "llama3":
-            self.initialize_ollama(self.model_name)
+        elif self.model_name == "ollama" or "llama3.1":
+            self.ollama_llm = self.initialize_ollama(self.model_name)
+
         else:
             raise ValueError(f"Model '{self.model_name}' is not supported.")
 
-    def initialize_ollama(self, model_name):
+
+    def initialize_ollama(self, model_name="llama3.1"):
         # Prepare the messages for the model
-        messages = [
-            {
-                'role': 'user',
-                'content': ''
-            }
-        ]
-        ollama.chat(model=model_name, messages=messages)
+        llm = Ollama(model="llama3.1", request_timeout=60.0)
+        response = llm.complete("be a code helper.")
+        #print(response)
+        return llm
   
     def ollama(self, prompt):
+        if not self.ollama_llm:
+            self.ollama_llm = self.initialize_ollama()
         # Prepare the messages for the model
-        messages = [
-            {
-                'role': 'user',
-                'content': prompt
-            }
-        ]
-        self.response = ollama.chat(model=self.model_name, messages=messages)
-        return self.response['message']['content']
+        response = self.ollama_llm.complete(prompt)
+        return response
     
     def ollama_messages(self, messages):
         # Prepare the messages for the model
-        self.response = ollama.chat(model=self.model_name, messages=messages)
-        return self.response['message']['content']
+        prompt = json.dumps(messages)
+        # Prepare the messages for the model
+        return self.ollama(prompt)
 
     def initialize_anthropic(self):
         """Initialize the Anthropic (Claude) client."""
@@ -274,6 +274,31 @@ class LLM:
         self.response = response.choices[0].message.content.strip()
         return self.response
     
+    def mcts_openai_messages(self, messages, temperature=None, model_name="gpt-4o-2024-08-06", n = 1):
+        """Call the OpenAI (GPT-4) model using the new ChatCompletion API."""
+        if not self.openai_client_initialized:
+            raise RuntimeError("OpenAI client is not initialized.")
+        
+        if temperature:
+            response = self.client.chat.completions.create(
+                model=model_name,
+                messages=messages,
+                temperature=temperature,  # Added temperature parameter
+                max_tokens=1024,
+                n = n,
+            )        
+        else:
+            response = self.client.chat.completions.create(
+                model=model_name,
+                messages=messages,
+                # Added temperature parameter
+                max_tokens=1024,
+                n = n,
+            )        
+        # Extract the response content
+        self.response = response
+        return self.response
+
     def mcts_openai_messages(self, messages, temperature=None, model_name="gpt-4o-2024-08-06", n = 1):
         """Call the OpenAI (GPT-4) model using the new ChatCompletion API."""
         if not self.openai_client_initialized:
@@ -381,7 +406,7 @@ class LLM:
             return self.gemini(transform_to_gemini(messages), temperature)
         elif self.model_name == "anthropic":
             return self.anthropic_messages(messages, temperature)
-        elif self.model_name == "llama3.1" or "codegemma":
+        elif self.model_name == "llama3.1" or "ollama":
             return self.ollama_messages(messages)
         else:
             print(self.model_name)

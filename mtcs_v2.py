@@ -252,10 +252,9 @@ if __name__ == '__main__':
     for problem_name in problem_names[:1]:
         problem = load_problem_training(problem_name, Path(problem_directory))
         problem_list.append(problem)
-        model_name = 'gpt4'
+        model_name = 'llama3.1'
         mcts = MCTS_v2(model_name, problem)
         solution_node = mcts.mcts_trial(problem, max_steps=10)
         print(mcts.sm.solution_manager)
         mcts.sm.to_submit('to_submit/')
         print_tree(mcts.root)
-
