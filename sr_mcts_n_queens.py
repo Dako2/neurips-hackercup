@@ -20,9 +20,25 @@ from lib.utils import (
     maybe_remove_backticks,
     save_to_disk,
 )
+import json 
+from sentence_transformers import SentenceTransformer, util
+
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(message)s')
 logger = logging.getLogger()
+
+
+# Load the model globally (only once)
+model = SentenceTransformer('all-MiniLM-L6-v2')
+
+def check_similarity(new_code, previous_codes, threshold=0.9):
+    new_embedding = model.encode(new_code, convert_to_tensor=True)
+    for prev_code in previous_codes:
+        prev_embedding = model.encode(prev_code, convert_to_tensor=True)
+        similarity = util.pytorch_cos_sim(new_embedding, prev_embedding).item()
+        if similarity > threshold:
+            return True  # Prune if similar
+    return False
 
 def verify_code_syntax2(code):
     """
@@ -155,33 +171,61 @@ def execute_code(code, test_case_input, test_case_output):
         return False
 
 class Node:
-    def __init__(self, state, code, parent=None, action=None, evaluation=None):
+    def __init__(self, state, code, depth=0, parent=None, action=None, evaluation=None, prompt=None):
         self.state = state  # The current code as a string
         self.parent = parent
         self.children = []
         self.visits = 0
         self.Q = 0.0
+        self.score = 0
         self.N_sa = defaultdict(int)
         self.Q_sa = defaultdict(float)
         self.action = action  # Modification that led to this state
         self.evaluation = evaluation
         self.code = code
+        self.prompt = prompt
         self.untried_actions = self.get_possible_actions()
         self.tried_actions = set()
+        self.depth = depth  # Track the depth of the node
+        self.uniqueness_score=1
+        self.solution = None
+        self.terminal = False
+    
+    def add_child(self, state, code, parent, action=None, prompt=None):
+        """Add a child node to this node."""
+        child = Node(state=state, code=code, depth=self.depth+1, parent=self, action=action, prompt=prompt)
+        self.children.append(child)
+        return child
 
     def get_possible_actions(self):
         """
         Defines possible actions (code modifications) for this node.
         """
         return [
-            "If it's time-out. Please try a different algorithm",
-            "If it's time-out. Please try a different algorithm. ",
-            "If it's time-out. Please try a different algorithm",
+            "Try a different algorithm for optimization.",
+            #"Adjust logic for fewer loops.",
+            "Consider an alternative data structure."
         ]
 
     def is_terminal(self):
         # Define terminal condition, e.g., code passes all test cases
-        return self.Q == 1.0  # If Q-value is 1.0, all test cases passed
+        return self.terminal
+
+def print_tree(node: Node | None, level: int = 0, prefix: str = ""):
+    if node is None:
+        return
+    # Print current node with the appropriate prefix and score information
+    connector = "└─" if level > 0 and not node.parent.children[-1] == node else "├─"
+    print(f"{prefix}{connector} Node(state=node.state, Q={node.Q}, visits={node.visits}, depth={node.depth})")
+    # Update the prefix for children
+    new_prefix = prefix + ("   " if connector == "└─" else "│  ")
+    # Recursively print each child
+    for idx, child in enumerate(node.children):
+        is_last_child = idx == len(node.children) - 1
+        if is_last_child:
+            print_tree(child, level + 1, new_prefix)
+        else:
+            print_tree(child, level + 1, new_prefix)
 
 class SR_MCTS_LLM:
     def __init__(self, problem, max_nodes, exploration_constant=1.4, alpha=0.5, gamma=0.9):
@@ -199,6 +243,8 @@ class SR_MCTS_LLM:
         self.strong_llm = LLM(model_name=self.model_name)
 
     def search(self):
+        previous_solutions = set()  # Store previously generated solutions
+
         while self.tree_size < self.max_nodes:
             self.iteration += 1
             logger.info(f"\nIteration {self.iteration}: Tree Size = {self.tree_size}")
@@ -208,7 +254,9 @@ class SR_MCTS_LLM:
                 logger.info("No node selected for expansion (all nodes pruned or terminal).")
                 break
             logger.info(f"Selected node for expansion: Node ID {id(node)}")
+ 
             # Expansion Phase
+
             child_node = self.expand(node)
             logger.info(f"Expanded node: Node ID {id(child_node)}")
             # Evaluation Phase
@@ -264,16 +312,17 @@ class SR_MCTS_LLM:
         Critique/Manager/Ochestrator: A1: wrong, A2: wrong, A3: xxx? Generate an Action: 
         Worker: Try A4. Gen Code
         """
+
         # Use the action as the critique
-        action = self.gen_action(node)
-        critique = self.manager(node, action)
+        action = self.get_action(node)
+        critique, prompt = self.manager(node, action)
         new_code = self.worker(node, critique)
-        child_node = Node(state=critique, code=new_code, parent=node, action=action)
-        node.children.append(child_node)
+        
+        child_node = node.add_child(state=critique, code=new_code, parent=node, action=action, prompt=prompt)
         self.tree_size += 1
         return child_node
 
-    def gen_action(self, node, option=True):
+    def get_action(self, node, option=True):
         #based on the previous actions of all the child nodes under this parent node, generate a new action
         #there are two approaches: 1. defined list of actions; 2. undefined LLM generated action
         if option:
@@ -296,7 +345,7 @@ class SR_MCTS_LLM:
         logger.info(f"\n@_@ - Messages:{messages}")
         response = self.strong_llm.run_messages(messages)
         logger.info(f"\n@_@ - response:{response}")
-        return response
+        return response, json.dumps(messages)
 
     def worker(self, node, critique): #worker role
         # Use LLM to generate improved code based on the critique
@@ -339,27 +388,51 @@ class SR_MCTS_LLM:
     def summarize_state(self, context):
         return context
 
+    def heuristic_score(self, uniqueness_score, correct, full_status):
+        if full_status=='timeout':
+            efficiency = -1
+        elif full_status=='pending':
+            efficiency = 0
+        else:
+            efficiency = 1
+ 
+        return correct + 0.5 * efficiency + 0.5 * uniqueness_score
+
     def evaluate(self, node):
         # Verify code syntax
-        code = node.code        
-        s = Solution(code, self.problem.problem_name, self.problem.sample_input_path,
+        new_code = node.code
+        try:
+            uniqueness_score = 1 - max(
+                util.pytorch_cos_sim(model.encode(new_code, convert_to_tensor=True), model.encode(code, convert_to_tensor=True)).item()
+                for code in [n.code for n in self.sm.solution_manager.code.values]
+            )
+        except:
+            uniqueness_score = 1
+
+        s = Solution(new_code, self.problem.problem_name, self.problem.sample_input_path,
                     self.problem.sample_output_path, self.problem.full_input_path, self.model_name)
         testreport, fullreport = s.eval()
-                
-        node.evaluation = f"{self.problem.problem_name}: {testreport}\n\n {fullreport}"
+        if testreport.status == "passed" and fullreport.status == "complete":
+            node.terminal = True
+
+        node.evaluation = f"{self.problem.problem_name}: {testreport}\n\n Full test cases: {fullreport.as_xml}"
         logger.info(f"\n@_@ - Node: {node.evaluation}")
         
-        qg = testreport.success_rate_number  # Score based on success rate for failed cases
- 
+        qg = self.heuristic_score(uniqueness_score, testreport.success_rate_number, fullreport.status)  # Score based on success rate for failed cases        
         ql = self.local_value(node) 
         q_value = self.alpha * ql + (1 - self.alpha) * qg
-        node.Q = q_value
         
+        node.Q = q_value
+        node.score = qg
+        node.uniqueness_score = uniqueness_score
+        node.solution = s
+
         #some logisitics
         s.solver = "sr_mcts"
-        s.model_capability = "llama3.1"
+        s.model_capability = "gpt4"
         s.score = qg
         s.q = q_value
+        s.prompt =  node.prompt
         self.sm.add_solution(s)
 
         return q_value
@@ -424,7 +497,7 @@ for problem_name in problem_names:
 problem = problem_list[0]
 
 # Instantiate the SR_MCTS_LLM algorithm
-sr_mcts_llm = SR_MCTS_LLM(problem, max_nodes=10)
+sr_mcts_llm = SR_MCTS_LLM(problem, max_nodes=30)
 
 # Perform the search
 best_solution = sr_mcts_llm.search()

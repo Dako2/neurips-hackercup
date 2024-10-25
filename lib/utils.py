@@ -263,7 +263,6 @@ class TestReport(BaseModel):
 <test_report>
 <status>{self.status}</status>
 <message>{self.message}</message>
-<output_file>{self.output}</output_file>
 </test_report>
 """
 
