@@ -4,20 +4,24 @@ import logging
 import math
 import random
 import numpy as np
+
 from lib.utils import (
     create_logger,
-    load_problem_from_folder,
     verify_code_syntax,
     extract_text,
     maybe_remove_backticks,
     save_to_disk,
+    list_problem_names, 
+    load_problem_from_folder,
+    load_problem_training, 
+    load_problem_v2024,
 )
 from lib.llms import LLM, mcts_openai_messages_v2
 from lib.prompts import (
     CODER_INSTRUCTIONS,
 )
-from solution import SolutionManager, Solution
-from rag import RAG
+from lib.utils import 
+from pathlib import Path
 
 class Node:
     def __init__(self, state, parent=None, evaluation=None, depth=0):
@@ -51,7 +55,7 @@ class Node:
         min_reward = np.min(self.reward_samples)
         self.Q = (avg_reward + min_reward) / 2  # Average of worst and avg outcome
 
-class MCTS_v2:
+class MCTS_v3:
     def __init__(self, llm_model, problem, logger=None, depth_limit=4):
         self.problem = problem
         self.root = Node(state=None)  # The initial root node
@@ -83,9 +87,9 @@ class MCTS_v2:
             self.logger.info(f"Depth limit reached at node depth {node.depth}.")
             return
         messages = self.build_prompt_with_feedback(node, problem)
-        n = 2  # Number of child nodes to generate
+        n = n #Number of child nodes to generate
 
-        self.logger.info(f"\n\n\n\n----------------- expanding nodes ...-----------------")
+        self.logger.info(f"---expanding nodes---")
         if True:
             response = mcts_openai_messages_v2(messages, temperature=1, model_list = ['gpt4','gpt4'], n = n)
             for i in range(n):
@@ -130,7 +134,6 @@ class MCTS_v2:
             return evaluation_text[:max_length] + '...'+ evaluation_text[-max_length:] 
         else:
             return evaluation_text
- 
 
     def simulate(self, node, problem):
         """Run the simulation (AI solution generation and evaluation)."""
@@ -143,7 +146,7 @@ class MCTS_v2:
         
         testreport, fullreport = s.eval()
         s.solver = 'mcts_v2'
-        s.model_capability = self.model_name
+        s.model_capability = 'gpt4'
 
         self.sm.add_solution(s)
         node.evaluation = f"\n##Sample test results: {testreport.message}\n The full test cases: {fullreport.message}"
@@ -244,11 +247,8 @@ def print_tree(node: Node | None, level: int = 0, prefix: str = ""):
         else:
             print_tree(child, level + 1, new_prefix)
 
-        
-if __name__ == '__main__':
-    from lib.utils import load_problem_from_folder, list_problem_names, load_problem_training, load_problem_v2024
-    from pathlib import Path
 
+if __name__ == '__main__':
     problem_directory = "contestData"
     problem_names = list_problem_names(problem_directory, "2024")
     problem_list = []
@@ -256,10 +256,13 @@ if __name__ == '__main__':
         problem_list.append(load_problem_v2024(problem_name, Path(problem_directory)))
 
     problem = problem_list[1]
+    # Initial code (could be empty or a simple template)
+    initial_code = problem.problem_description
+    # Instantiate the SR_MCTS_LLM algorithm
+    sr_mcts_llm = MCTS_v3(initial_code, problem, max_nodes=10)
+    # Perform the search
+    best_solution = sr_mcts_llm.search()
 
-    model_name = 'gpt4'
-    mcts = MCTS_v2(model_name, problem)
-    solution_node = mcts.mcts_trial(problem, max_steps=4)
-    print(mcts.sm.solution_manager)
-    mcts.sm.save()
-    print_tree(mcts.root)
+    # Output the best solution found
+    print("\nBest Solution Found:")
+    print(best_solution)

@@ -26,6 +26,8 @@ class Solution:
     code_path: Path = Field(default=None) #[None, "xxxx/xx.py"]
     #evaluation result
     score: float = Field(default=None) #[None, 0->1]
+    q: float = Field(default=None)
+    prompt: float = Field(default=None)
 
     sample_time_collapse: float = Field(default=100000.)
     
@@ -35,6 +37,7 @@ class Solution:
     sample_eval_report: str = Field(default='')
     #sorting info
     model_capability: str = Field(default='gpt4') # GPT4, Claude, Gemini, etc.
+    solver: str = Field(default='NaN')
     
     def __init__(self, code, problem_name, sample_input_path, sample_output_path, full_input_path, model_capability): #generating test report of sample data and full eval 
         
@@ -48,6 +51,8 @@ class Solution:
         self.full_input_path = full_input_path
         self.sample_output_path = sample_output_path
         self.full_output_path = None
+
+        
 
         self.testreport = None
         self.full_testreport = TestReport(
@@ -109,16 +114,19 @@ class Solution:
     def value(self):
         return {
             'id': self.id,
+            'solver': self.solver,
             'problem_name': self.problem_name,
             'eval_status': self.sample_eval_status, #success, fail
             'full_status': self.full_output_status, #success, fail
+            'model_capability': self.model_capability,
             'score': self.score,
+            'q': self.q, 
             'code': self.code,
+            'sample_eval_report': self.sample_eval_report,
             'code_path': self.code_path,
             'full_output_path': self.full_output_path,
-            'model_capability': self.model_capability,
             'sample_time_collapse': self.sample_time_collapse,
-            'sample_eval_report': self.sample_eval_report,
+            'prompt': self.prompt,
         }
     @property
     def key(self):
@@ -216,6 +224,19 @@ class SolutionManager:
             _ = generate_full(sol.code, sol.full_input_path, full_out_path, timeout=35)
         else:
             shutil.copy2(sol.full_output_path, full_out_path)
+
+    def save(self, file_path = "solution_manager.pickle"):
+        # Step 1: Load the existing pickle file
+        try:
+            existing_df = pd.read_pickle(file_path)
+        except FileNotFoundError:
+            # If the file doesn't exist, create an empty DataFrame
+            existing_df = pd.DataFrame()
+        # Append the new dataframe to the existing one
+        combined_df = pd.concat([existing_df, self.solution_manager], ignore_index=True)
+        # Step 3: Save the combined dataframe back to the pickle file
+        combined_df.to_pickle(file_path)
+
 
 async def check_correctness(program: str, input_data: str, expected_output: str, timeout: float) -> TestReport:
     return await exec_program(program, input_data, expected_output, timeout)

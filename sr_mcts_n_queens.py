@@ -9,7 +9,17 @@ import tempfile
 from pathlib import Path
 from collections import defaultdict
 import re 
-
+from solution import Solution, SolutionManager
+from lib.prompts import CODER_INSTRUCTIONS
+from lib.llms import LLM
+from lib.utils import (
+    create_logger,
+    load_problem_from_folder,
+    verify_code_syntax,
+    extract_text,
+    maybe_remove_backticks,
+    save_to_disk,
+)
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(message)s')
 logger = logging.getLogger()
@@ -39,7 +49,7 @@ def extract_python_code(text):
     # Use regex to find the content between ```python and ```
     pattern = r"```python(.*?)```"
     code_blocks = re.findall(pattern, text, re.DOTALL)
-
+    logger.info(code_blocks)
     # Return the extracted code blocks
     return code_blocks[0]
     
@@ -145,8 +155,8 @@ def execute_code(code, test_case_input, test_case_output):
         return False
 
 class Node:
-    def __init__(self, code_state, parent=None, action=None):
-        self.code_state = code_state  # The current code as a string
+    def __init__(self, state, code, parent=None, action=None, evaluation=None):
+        self.state = state  # The current code as a string
         self.parent = parent
         self.children = []
         self.visits = 0
@@ -154,6 +164,8 @@ class Node:
         self.N_sa = defaultdict(int)
         self.Q_sa = defaultdict(float)
         self.action = action  # Modification that led to this state
+        self.evaluation = evaluation
+        self.code = code
         self.untried_actions = self.get_possible_actions()
         self.tried_actions = set()
 
@@ -162,13 +174,9 @@ class Node:
         Defines possible actions (code modifications) for this node.
         """
         return [
-            "Improve code efficiency",
-            "Fix syntax errors",
-            "Handle edge cases",
-            "Optimize loops",
-            "Correct logical errors",
-            "Add comments for clarity",
-            "Refactor code structure"
+            "If it's time-out. Please try a different algorithm",
+            "If it's time-out. Please try a different algorithm. ",
+            "If it's time-out. Please try a different algorithm",
         ]
 
     def is_terminal(self):
@@ -176,15 +184,19 @@ class Node:
         return self.Q == 1.0  # If Q-value is 1.0, all test cases passed
 
 class SR_MCTS_LLM:
-    def __init__(self, initial_code, test_cases, max_nodes, exploration_constant=1.4, alpha=0.5, gamma=0.9):
-        self.root = Node(initial_code)
-        self.test_cases = test_cases  # List of (input, expected_output)
+    def __init__(self, problem, max_nodes, exploration_constant=1.4, alpha=0.5, gamma=0.9):
+        self.root = Node(problem.problem_description, "")
+        self.problem = problem  # List of (input, expected_output)
         self.max_nodes = max_nodes
         self.c = exploration_constant
         self.alpha = alpha
         self.gamma = gamma
         self.tree_size = 1
         self.iteration = 0
+        self.sm = SolutionManager()
+        self.fast_llm = LLM(model_name='gpt3.5')
+        self.model_name = "gpt4"
+        self.strong_llm = LLM(model_name=self.model_name)
 
     def search(self):
         while self.tree_size < self.max_nodes:
@@ -245,52 +257,111 @@ class SR_MCTS_LLM:
         return selected_node
 
     def expand(self, node):
-        action = random.choice(node.untried_actions)
-        node.untried_actions.remove(action)
-        node.tried_actions.add(action)
+        """
+        Q: 1+1*3=?
+        A1: 1+1=2, 2*3=6
+        Evaluation: False, score: 0
+        Critique/Manager/Ochestrator: A1: wrong, A2: wrong, A3: xxx? Generate an Action: 
+        Worker: Try A4. Gen Code
+        """
         # Use the action as the critique
-        critique = self.critique(node.code_state, action)
-        new_code = self.rewrite(node.code_state, critique)
-        child_node = Node(new_code, parent=node, action=action)
+        action = self.gen_action(node)
+        critique = self.manager(node, action)
+        new_code = self.worker(node, critique)
+        child_node = Node(state=critique, code=new_code, parent=node, action=action)
         node.children.append(child_node)
         self.tree_size += 1
         return child_node
 
-    def critique(self, code_state, action): #manager role
-        # For simplicity, we use the action as the critique
-        critique = action
-        prompt = f"The following code needs improvement:\n{code_state}\nCritique: {critique}\nPlease provide a corrected and improved version of the code."
-        new_code = call_llm(prompt)
-        return critique
+    def gen_action(self, node, option=True):
+        #based on the previous actions of all the child nodes under this parent node, generate a new action
+        #there are two approaches: 1. defined list of actions; 2. undefined LLM generated action
+        if option:
+            action = random.choice(node.untried_actions)
+            node.untried_actions.remove(action)
+            node.tried_actions.add(action)
+        else:
+            action = random.choice(node.untried_actions)
+            node.untried_actions.remove(action)
+            node.tried_actions.add(action)
+        return action 
+    
+    def strategist(self, node):
+        pass
 
-    def rewrite(self, code_state, critique): #worker role
+    def manager(self, node, action):
+        # For simplicity, we use the action as the critique
+        messages = self.build_prompt_with_feedback(node)
+        messages.extend([{'role': 'user', 'content': action}])
+        logger.info(f"\n@_@ - Messages:{messages}")
+        response = self.strong_llm.run_messages(messages)
+        logger.info(f"\n@_@ - response:{response}")
+        return response
+
+    def worker(self, node, critique): #worker role
         # Use LLM to generate improved code based on the critique
-        prompt = f"The following code needs improvement:\n{code_state}\nCritique: {critique}\nPlease provide a corrected and improved version of the code."
-        new_code = call_llm(prompt)
+        new_code = self.coder(critique)
+        node.code = new_code
+        logger.info(f"\n@_@ - New Code:{new_code}")
         return new_code
+
+    def coder(self, critique): #implement the code; fixed context length simple response
+        """Processes assistant output to extract and verify the source code."""
+        messages = [{'role': 'user', 'content': CODER_INSTRUCTIONS.format(problem=self.problem.problem_description, code=critique)}]
+        out = self.fast_llm.run_messages(messages=messages)
+        
+        code = extract_text(out, '<source_code>')
+        code = maybe_remove_backticks(code)
+        return code
+
+    def build_prompt_with_feedback(self, node):
+        """Construct the prompt including previous solutions and their evaluations."""
+        prompt = f"""Provide TRULY correct and NO-TIMEOUT solution. Problem: {self.problem.problem_description}"""
+        current_node = node
+        conversation_history = []
+        while current_node.parent is not None:
+            conversation_history.append(
+            {
+                'role': 'user',
+                'content': current_node.evaluation,
+            },)
+            summarized_state = self.summarize_state(current_node.state)
+            conversation_history.append({
+                'role': 'assistant',
+                'content': summarized_state,
+            })
+            current_node = current_node.parent
+        conversation_history = conversation_history[::-1]
+        messages = [{'role': 'user', 'content': prompt}]
+        messages.extend(conversation_history)
+        return messages
+
+    def summarize_state(self, context):
+        return context
 
     def evaluate(self, node):
         # Verify code syntax
+        code = node.code        
+        s = Solution(code, self.problem.problem_name, self.problem.sample_input_path,
+                    self.problem.sample_output_path, self.problem.full_input_path, self.model_name)
+        testreport, fullreport = s.eval()
+                
+        node.evaluation = f"{self.problem.problem_name}: {testreport}\n\n {fullreport}"
+        logger.info(f"\n@_@ - Node: {node.evaluation}")
         
-        code = extract_text(node.code_state, '<source_code>')
-        code = extract_python_code(code)
-        code = maybe_remove_backticks(code)
-        code_exec_flag, verified_code_or_error = verify_code_syntax2(code)
-        
-        logger.info(f"Code:''' {code}'''\n")
-        if not code_exec_flag:
-            logger.error(f"Code syntax error: {verified_code_or_error}")
-            qg = 0.0
-        else:
-            # Run the code against test cases and compute a score
-            pass_count = 0
-            for test_input_lines, test_output_lines in self.test_cases:
-                if execute_code(node.code_state, test_input_lines, test_output_lines):
-                    pass_count += 1
-            qg = pass_count / len(self.test_cases)
-        ql = self.local_value(node)
-        q_value = self.alpha * qg + (1 - self.alpha) * ql
+        qg = testreport.success_rate_number  # Score based on success rate for failed cases
+ 
+        ql = self.local_value(node) 
+        q_value = self.alpha * ql + (1 - self.alpha) * qg
         node.Q = q_value
+        
+        #some logisitics
+        s.solver = "sr_mcts"
+        s.model_capability = "llama3.1"
+        s.score = qg
+        s.q = q_value
+        self.sm.add_solution(s)
+
         return q_value
 
     def local_value(self, node):
@@ -325,7 +396,7 @@ class SR_MCTS_LLM:
             nodes_to_visit.extend(current_node.children)
         if best_node:
             logger.info(f"Best solution found with Q-value {best_node.Q:.4f}")
-            return best_node.code_state
+            return best_node.state
         else:
             logger.info("No valid solution found.")
             return None
@@ -350,14 +421,10 @@ problem_list = []
 for problem_name in problem_names:
     problem_list.append(load_problem_v2024(problem_name, Path(problem_directory)))
 
-problem = problem_list[1]
-# Initial code (could be empty or a simple template)
-initial_code = problem.problem_description
-
-test_cases = problem.sample_input
+problem = problem_list[0]
 
 # Instantiate the SR_MCTS_LLM algorithm
-sr_mcts_llm = SR_MCTS_LLM(initial_code, test_cases, max_nodes=10)
+sr_mcts_llm = SR_MCTS_LLM(problem, max_nodes=10)
 
 # Perform the search
 best_solution = sr_mcts_llm.search()
@@ -365,3 +432,5 @@ best_solution = sr_mcts_llm.search()
 # Output the best solution found
 print("\nBest Solution Found:")
 print(best_solution)
+
+print(sr_mcts_llm.sm.solution_manager)
