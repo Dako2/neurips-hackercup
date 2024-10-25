@@ -50,9 +50,7 @@ class Solution:
         self.sample_input_path = sample_input_path
         self.full_input_path = full_input_path
         self.sample_output_path = sample_output_path
-        self.full_output_path = None
-
-        
+        self.full_output_path = None        
 
         self.testreport = None
         self.full_testreport = TestReport(
@@ -69,10 +67,9 @@ class Solution:
         )
         self.full_output_status = None
         self.model_capability = model_capability
-
         self.to_submit_signal = False
         
-    def eval(self, exact_match = True):
+    def eval(self, exact_match = True): #TODO: OYIYI
         
         self.testreport = evaluator_sample(self.code, self.sample_input_path, self.sample_output_path)
         self.score = round(self.testreport.success_rate_number, 2)
@@ -96,12 +93,7 @@ class Solution:
         with open(self.code_path, 'w') as f:
             f.write(self.code)        
         return self.testreport, self.full_testreport
-
-    def gen_full(self):
-        self.full_output_path = self.solution_folder + self.problem_name + f'_{self.score}_{self.timestamp}_full_out.txt'
-        self.full_testreport = generate_full(self.code, self.full_input_path, self.full_output_path)
-        self.full_output_status = self.full_testreport.status
-        return self.full_output_path
+ 
     
     @property
     def check(self):

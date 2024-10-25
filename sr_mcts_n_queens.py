@@ -232,6 +232,8 @@ def print_tree(node: Node, prefix: str = "", current_node: Node = None):
         print_tree(child, new_prefix, current_node)
 
 
+SELECT_LANGUAGE = "python3"
+
 class SR_MCTS_LLM:
     def __init__(self, problem, max_nodes, exploration_constant=1.4, alpha=0.5, gamma=0.9):
         self.root = Node(problem.problem_description, "")
