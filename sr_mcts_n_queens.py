@@ -211,21 +211,26 @@ class Node:
         # Define terminal condition, e.g., code passes all test cases
         return self.terminal
 
-def print_tree(node: Node | None, level: int = 0, prefix: str = ""):
+def print_tree(node: Node, prefix: str = "", current_node: Node = None):
     if node is None:
         return
-    # Print current node with the appropriate prefix and score information
-    connector = "└─" if level > 0 and not node.parent.children[-1] == node else "├─"
-    print(f"{prefix}{connector} Node(state=node.state, Q={node.Q}, visits={node.visits}, depth={node.depth})")
-    # Update the prefix for children
+
+    # Determine connector symbol for tree structure
+    connector = "└─" if node.parent and node.parent.children[-1] == node else "├─"
+    
+    # Highlight the current node with a marker (e.g., "⇨")
+    marker = "⇨⇨⇨⇨here" if node == current_node else " "
+
+    # Print node details, including the marker for the current node
+    print(f"{prefix}{connector} Depth={node.depth}, State={id(node)}, Score = {node.score:.2f}, Q={node.Q:.2f}, Visits={node.visits} {marker}")
+
+    # Update prefix for children based on this node's position
     new_prefix = prefix + ("   " if connector == "└─" else "│  ")
-    # Recursively print each child
-    for idx, child in enumerate(node.children):
-        is_last_child = idx == len(node.children) - 1
-        if is_last_child:
-            print_tree(child, level + 1, new_prefix)
-        else:
-            print_tree(child, level + 1, new_prefix)
+
+    # Recursively print each child node
+    for child in node.children:
+        print_tree(child, new_prefix, current_node)
+
 
 class SR_MCTS_LLM:
     def __init__(self, problem, max_nodes, exploration_constant=1.4, alpha=0.5, gamma=0.9):
@@ -256,12 +261,13 @@ class SR_MCTS_LLM:
             logger.info(f"Selected node for expansion: Node ID {id(node)}")
  
             # Expansion Phase
-
             child_node = self.expand(node)
             logger.info(f"Expanded node: Node ID {id(child_node)}")
             # Evaluation Phase
             q_value = self.evaluate(child_node)
             logger.info(f"Evaluation of node ID {id(child_node)}: Q-value = {q_value:.4f}")
+            
+            print_tree(self.root, current_node=child_node)
             # Backpropagation Phase
             self.backpropagate(child_node, q_value)
             # Check for terminal solution
@@ -342,16 +348,16 @@ class SR_MCTS_LLM:
         # For simplicity, we use the action as the critique
         messages = self.build_prompt_with_feedback(node)
         messages.extend([{'role': 'user', 'content': action}])
-        logger.info(f"\n@_@ - Messages:{messages}")
+        logger.debug(f"\n@_@ - Messages:{messages}")
         response = self.strong_llm.run_messages(messages)
-        logger.info(f"\n@_@ - response:{response}")
+        logger.debug(f"\n@_@ - response:{response}")
         return response, json.dumps(messages)
 
     def worker(self, node, critique): #worker role
         # Use LLM to generate improved code based on the critique
         new_code = self.coder(critique)
         node.code = new_code
-        logger.info(f"\n@_@ - New Code:{new_code}")
+        logger.debug(f"\n@_@ - New Code:{new_code}")
         return new_code
 
     def coder(self, critique): #implement the code; fixed context length simple response
@@ -423,7 +429,7 @@ class SR_MCTS_LLM:
         q_value = self.alpha * ql + (1 - self.alpha) * qg
         
         node.Q = q_value
-        node.score = qg
+        node.score = testreport.success_rate_number
         node.uniqueness_score = uniqueness_score
         node.solution = s
 
@@ -494,7 +500,7 @@ problem_list = []
 for problem_name in problem_names:
     problem_list.append(load_problem_v2024(problem_name, Path(problem_directory)))
 
-problem = problem_list[0]
+problem = problem_list[2]
 
 # Instantiate the SR_MCTS_LLM algorithm
 sr_mcts_llm = SR_MCTS_LLM(problem, max_nodes=30)
