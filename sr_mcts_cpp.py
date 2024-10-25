@@ -27,6 +27,7 @@ from sentence_transformers import SentenceTransformer, util
 logging.basicConfig(level=logging.INFO, format='%(message)s')
 logger = logging.getLogger()
 
+SELECT_LANGUAGE = "python3"
 
 # Load the model globally (only once)
 model = SentenceTransformer('all-MiniLM-L6-v2')
@@ -70,11 +71,16 @@ def extract_python_code(text):
     return code_blocks[0]
     
 def maybe_remove_backticks(solution: str) -> str:
-    "Remove backticks from the solution"
-    solution = solution.strip()
-    solution = re.sub(r'^```python\s*', '', solution)
-    solution = re.sub(r'\s*```$', '', solution)
-    return solution
+    if "python" in SELECT_LANGUAGE:
+        solution = solution.strip()
+        solution = re.sub(r'^```python\s*', '', solution)
+        solution = re.sub(r'\s*```$', '', solution)
+        return solution
+    if "cpp" in SELECT_LANGUAGE:
+        solution = solution.strip()
+        solution = re.sub(r'^```cpp\s*', '', solution)
+        solution = re.sub(r'\s*```$', '', solution)
+        return solution
 
 def save_to_disk(content: str, path: Path,):
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -217,7 +223,7 @@ def print_tree(node: Node, prefix: str = "", current_node: Node = None):
 
     # Determine connector symbol for tree structure
     connector = "└─" if node.parent and node.parent.children[-1] == node else "├─"
-    
+     
     # Highlight the current node with a marker (e.g., "⇨")
     marker = "⇨ ⇨ ⇨ ⇨ here!" if node == current_node else " "
 
