@@ -128,7 +128,7 @@ def unzip_questions(zip_path, password, unzipped_path):
 def create_logger(log_file, logger_name):
     # Create a logger with a unique name (logger_name should be unique per task)
     logger = logging.getLogger(logger_name)
-    logger.setLevel(logging.INFO)
+    logger.setLevel(logging.DEBUG)
 
     # Check if a FileHandler already exists
     file_handler_exists = any(isinstance(handler, logging.FileHandler) for handler in logger.handlers)
@@ -162,7 +162,7 @@ def create_logger(log_file, logger_name):
     if not stream_handler_exists:
         # Create a stream handler for logging to the terminal
         stream_handler = logging.StreamHandler()
-        stream_handler.setLevel(logging.INFO)
+        stream_handler.setLevel(logging.DEBUG)
 
         # Formatter for the logs (same as for file, can be customized separately)
         stream_handler.setFormatter(formatter)

@@ -274,6 +274,20 @@ class LLM:
         self.response = response.choices[0].message.content.strip()
         return self.response
     
+    def openai_messages_seed(self, messages, seed=200, model_name="gpt-4o-2024-08-06"):
+        """Call the OpenAI (GPT-4) model using the new ChatCompletion API."""
+        if not self.openai_client_initialized:
+            raise RuntimeError("OpenAI client is not initialized.")
+        response = self.client.chat.completions.create(
+            model=model_name,
+            messages=messages,
+            seed=seed,
+            temperature=1,  # Added temperature parameter
+            max_tokens=2048,
+        )
+        self.response = response.choices[0].message.content.strip()
+        return self.response
+    
     def mcts_openai_messages(self, messages, temperature=None, model_name="gpt-4o-2024-08-06", n = 1):
         """Call the OpenAI (GPT-4) model using the new ChatCompletion API."""
         if not self.openai_client_initialized:
@@ -397,7 +411,7 @@ class LLM:
         if self.model_name == "gpt4":
             return self.openai_messages(messages, temperature, "gpt-4o-2024-08-06")#gpt-4-turbo-preview#gpt-4o-2024-08-06
         elif self.model_name == "gpt3.5":
-            return self.openai_messages(messages, None, "gpt-3.5-turbo")
+            return self.openai_messages(messages, temperature, "gpt-3.5-turbo")
         elif self.model_name == "o1-mini":
             return self.openai_messages(messages, None, "o1-mini-2024-09-12")
         elif self.model_name == "o1":

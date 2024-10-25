@@ -24,10 +24,11 @@ import json
 from sentence_transformers import SentenceTransformer, util
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format='%(message)s')
-logger = logging.getLogger()
+logger = create_logger(f'logs/sr_MCTS_.log', f'gpt4')
+#logging.basicConfig(level=logging.INFO, format='%(message)s')
+#logger = logging.getLogger()
 
-SELECT_LANGUAGE = "python3"
+SELECT_LANGUAGE = "cpp"
 
 # Load the model globally (only once)
 model = SentenceTransformer('all-MiniLM-L6-v2')
@@ -70,17 +71,12 @@ def extract_python_code(text):
     # Return the extracted code blocks
     return code_blocks[0]
     
-def maybe_remove_backticks(solution: str) -> str:
-    if "python" in SELECT_LANGUAGE:
-        solution = solution.strip()
-        solution = re.sub(r'^```python\s*', '', solution)
-        solution = re.sub(r'\s*```$', '', solution)
-        return solution
-    if "cpp" in SELECT_LANGUAGE:
-        solution = solution.strip()
-        solution = re.sub(r'^```cpp\s*', '', solution)
-        solution = re.sub(r'\s*```$', '', solution)
-        return solution
+def maybe_remove_backticks(solution: str, label='python') -> str:
+    solution = solution.strip()
+    solution = re.sub(f'^```{label}\s*', '', solution)
+    solution = re.sub(r'\s*```$', '', solution)
+    return solution
+
 
 def save_to_disk(content: str, path: Path,):
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -190,28 +186,32 @@ class Node:
         self.evaluation = evaluation
         self.code = code
         self.prompt = prompt
-        self.untried_actions = self.get_possible_actions()
         self.tried_actions = set()
         self.depth = depth  # Track the depth of the node
+        if self.depth == 0:
+            self.untried_actions = get_possible_actions(plans_xml)
+            #self.untried_actions = self.get_possible_actions()
+        else:
+            self.untried_actions = self.get_possible_actions()        
         self.uniqueness_score=1
         self.solution = None
         self.terminal = False
-    
-    def add_child(self, state, code, parent, action=None, prompt=None):
-        """Add a child node to this node."""
-        child = Node(state=state, code=code, depth=self.depth+1, parent=self, action=action, prompt=prompt)
-        self.children.append(child)
-        return child
-
+        
     def get_possible_actions(self):
         """
         Defines possible actions (code modifications) for this node.
         """
         return [
-            "Try a different algorithm for optimization.",
+            "Refine the method to improve the correction and time complexity",
             #"Adjust logic for fewer loops.",
-            "Consider an alternative data structure."
+            "Check out the details of problem statement again to improve the correction and time complexity"
         ]
+
+    def add_child(self, state, code, parent, action=None, prompt=None):
+        """Add a child node to this node."""
+        child = Node(state=state, code=code, depth=self.depth+1, parent=self, action=action, prompt=prompt)
+        self.children.append(child)
+        return child
 
     def is_terminal(self):
         # Define terminal condition, e.g., code passes all test cases
@@ -228,7 +228,7 @@ def print_tree(node: Node, prefix: str = "", current_node: Node = None):
     marker = "⇨ ⇨ ⇨ ⇨ here!" if node == current_node else " "
 
     # Print node details, including the marker for the current node
-    print(f"{prefix}{connector} Depth={node.depth}, State={id(node)}, Score = {node.score:.2f}, Q={node.Q:.2f}, Visits={node.visits} {marker}")
+    print(f"{prefix}{connector} Depth={node.depth}, State={id(node)}, Score = {node.score:.2f}, Uniqueness={node.uniqueness_score:.2f}, Q={node.Q:.2f}, Visits={node.visits} {marker}")
 
     # Update prefix for children based on this node's position
     new_prefix = prefix + ("   " if connector == "└─" else "│  ")
@@ -249,7 +249,7 @@ class SR_MCTS_LLM:
         self.tree_size = 1
         self.iteration = 0
         self.sm = SolutionManager()
-        self.fast_llm = LLM(model_name='gpt3.5')
+        self.fast_llm = LLM(model_name='gpt4')
         self.model_name = "gpt4"
         self.strong_llm = LLM(model_name=self.model_name)
 
@@ -402,7 +402,7 @@ class SR_MCTS_LLM:
 
     def heuristic_score(self, uniqueness_score, correct, full_status):
         if full_status=='timeout':
-            efficiency = -1
+            efficiency = -10
         elif full_status=='pending':
             efficiency = 0
         else:
@@ -413,6 +413,7 @@ class SR_MCTS_LLM:
     def evaluate(self, node):
         # Verify code syntax
         new_code = node.code
+        """
         try:
             uniqueness_score = 1 - max(
                 util.pytorch_cos_sim(model.encode(new_code, convert_to_tensor=True), model.encode(code, convert_to_tensor=True)).item()
@@ -420,14 +421,17 @@ class SR_MCTS_LLM:
             )
         except:
             uniqueness_score = 1
-
+        """
+        uniqueness_score = 1
+        
         s = Solution(new_code, self.problem.problem_name, self.problem.sample_input_path,
                     self.problem.sample_output_path, self.problem.full_input_path, self.model_name)
         testreport, fullreport = s.eval()
         if testreport.status == "passed" and fullreport.status == "complete":
             node.terminal = True
 
-        node.evaluation = f"{self.problem.problem_name}: {testreport}\n\n Full test cases: {fullreport.as_xml}"
+        node.evaluation = f"{self.problem.problem_name}:\n - Sample test: {testreport.message}\n - Full test: {fullreport.as_xml}"
+        node.uniqueness_score = uniqueness_score
         logger.info(f"\n@_@ - Node: {node.evaluation}")
         
         qg = self.heuristic_score(uniqueness_score, testreport.success_rate_number, fullreport.status)  # Score based on success rate for failed cases        
@@ -500,13 +504,114 @@ for problem_name in problem_names:
     problem_list.append(load_problem_training(problem_name, Path(problem_directory)))
 """
 
+import xml.etree.ElementTree as ET
+
+plans_xml = '''
+<solutions>
+    <solution>
+        <method>Digit Decomposition and Search</method>
+        <description>Construct potential mountain numbers using a valid digit sequence and check criteria including divisibility.</description>
+        <complexity>Feasible but depends on efficient generation of candidate numbers</complexity>
+        <steps>
+            <step>Precompute possible digit patterns for numbers with 2k+1 digits where digits are non-zero.</step>
+            <step>Divide the range [A, B] into smaller manageable chunks and search within each chunk.</step>
+            <step>Within each chunk, generate possible mountain numbers using valid digit patterns.</step>
+            <step>Check each candidate number for the middle digit uniqueness and divisibility by M.</step>
+            <step>Use generators to yield valid mountain numbers to reduce memory overhead.</step>
+            <step>Count valid mountains that are also multiples of M.</step>
+        </steps>
+    </solution>
+    <solution>
+        <method>Dynamic Programming with Memoization</method>
+        <description>Utilize recursion with memoization to efficiently count mountains based on prior computed states.</description>
+        <complexity>Lower complexity due to avoidance of redundant calculations</complexity>
+        <steps>
+            <step>Implement a recursive function to generate mountain configurations up to a certain length.</step>
+            <step>Use a memoization table to store results of subproblems that are repeatedly calculated.</step>
+            <step>Ensure that generated sequences are checked for middle uniqueness and divisibility by M.</step>
+            <step>Combine results from subproblems to construct solutions for larger ranges.</step>
+            <step>Adapt the process to only generate mountains within the range [A, B] as necessary.</step>
+        </steps>
+    </solution>
+    <solution>
+        <method>Binary Search with Iterative Construction</method>
+        <description>Use binary search to focus on potential middle digits and iteratively construct valid mountain numbers.</description>
+        <complexity>Moderate, uses binary search to reduce search space significantly but requires careful number construction</complexity>
+        <steps>
+            <step>Identify possible middle digits based on the constraints (unique and suitable for the number's length).</step>
+            <step>Apply binary search on the middle digit to optimize finding potential mountain configurations.</step>
+            <step>For each middle digit, iteratively construct the rest of the mountain number ensuring constraints are met.</step>
+            <step>Check each complete number for multipliers of M conditionally.</step>
+            <step>Prune and adjust ranges using binary search results to quickly bypass entire incompatible sequences.</step>
+            <step>Count suspected mountains that fit all conditions within [A, B].</step>
+        </steps>
+    </solution>
+    <solution>
+        <method>Graph-Based Approach with Constraints Encoding</method>
+        <description>Model the problem as a graph where nodes represent digits and paths represent valid sequences.</description>
+        <complexity>Efficient in exploring connections but requires ingenuity in graph creation and traversal</complexity>
+        <steps>
+            <step>Create graph nodes representing each non-zero digit (1 through 9).</step>
+            <step>Establish directed edges based on allowable transitions respecting the mountain constraints (non-decreasing or non-increasing order).</step>
+            <step>Initiate search from every potential starting node up to the middle digit level.</step>
+            <step>From the middle digit, ensure uniqueness and continue building paths downwards.</step>
+            <step>Explore paths while ensuring they remain within the numerical boundaries defined by [A, B].</step>
+            <step>For valid paths that meet the criteria, check if the resulting number is divisible by M.</step>
+            <step>Count all valid paths that meet these conditions.</step>
+        </steps>
+    </solution>
+    <solution>
+        <method>Segmented Sieve Adaptation for Multiples</method>
+        <description>Extend the segmented sieve concept to efficiently identify multiples of M which appear as mountain numbers.</description>
+        <complexity>Low for number ranges where sieve is appropriate; benefits greatly from parallelization</complexity>
+        <steps>
+            <step>Utilize a segmented sieve to precompute multiples of M within the range [A, B].</step>
+            <step>Adjust the sieve to filter out only those numbers which fit the 2k+1 mountain shape constraints.</step>
+            <step>Check the shape of identified multiples to ensure they qualify as mountain numbers.</step>
+            <step>Use the sieve results to quickly eliminate large blocks of numbers, narrowing focus to potential mountains.</step>
+            <step>Count valid mountain numbers ascertained from this sieving process that lie within [A, B].</step>
+            <step>This method can leverage parallel computing to significantly speed up processing in vast ranges.</step>
+        </steps>
+    </solution>
+</solutions>
+'''
+def convert_xml_to_list(plans_xml):
+    import xml.etree.ElementTree as ET
+    try:
+        root = ET.fromstring(plans_xml.strip())
+    except ET.ParseError as e:
+        print(f"Error parsing XML: {e}")
+        print(f"XML content: {plans_xml}")
+    # Create a list of solutions
+    plan_list = []
+    for solution in root.findall('solution'):
+        method = solution.find('method').text
+        description = solution.find('description').text
+        complexity = solution.find('complexity').text
+        steps = [step.text for step in solution.find('steps').findall('step')]
+        
+        plan_list.append(json.dumps({
+            'method': method,
+            'description': description,
+            'complexity': complexity,
+            'steps': steps
+        }))        
+    return plan_list
+
+def get_possible_actions(plans_xml):
+    """
+    Defines possible actions (code modifications) for this node.
+    """
+    plans_xml = maybe_remove_backticks(plans_xml, 'xml')
+    plan_list = convert_xml_to_list(plans_xml)
+    return plan_list
+
 problem_directory = "contestData"
 problem_names = list_problem_names(problem_directory, "2024")
 problem_list = []
 for problem_name in problem_names:
     problem_list.append(load_problem_v2024(problem_name, Path(problem_directory)))
-
-problem = problem_list[2]
+problem = problem_list[4]
 
 # Instantiate the SR_MCTS_LLM algorithm
 sr_mcts_llm = SR_MCTS_LLM(problem, max_nodes=30)
@@ -519,3 +624,7 @@ print("\nBest Solution Found:")
 print(best_solution)
 
 print(sr_mcts_llm.sm.solution_manager)
+
+sr_mcts_llm.sm.save(file_path=f"sm_sr_mcts_cpp_{problem.problem_name}")
+print_tree(sr_mcts_llm.root, "", sr_mcts_llm.root)
+

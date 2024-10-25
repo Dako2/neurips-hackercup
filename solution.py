@@ -82,7 +82,7 @@ class Solution:
         self.sample_time_collapse = self.testreport.time_collapse
         self.sample_eval_status = self.testreport.status
         
-        if not exact_match or self.testreport.status in ['passed']:
+        if not exact_match or self.testreport.status in ['passed'] or self.testreport.success_rate_number > 0.3:
             self.full_output_path = self.solution_folder + self.problem_name + f'_{self.score}_{self.timestamp}_full_out.txt'
             self.full_testreport = generate_full(self.code, self.full_input_path, self.full_output_path)
             self.full_output_status = self.full_testreport.status
@@ -106,19 +106,19 @@ class Solution:
     def value(self):
         return {
             'id': self.id,
-            'solver': self.solver,
-            'problem_name': self.problem_name,
+            'score': self.score,
+            'q': self.q, 
             'eval_status': self.sample_eval_status, #success, fail
             'full_status': self.full_output_status, #success, fail
             'model_capability': self.model_capability,
-            'score': self.score,
-            'q': self.q, 
+            'solver': self.solver,
+            'problem_name': self.problem_name,
             'code': self.code,
-            'sample_eval_report': self.sample_eval_report,
             'code_path': self.code_path,
             'full_output_path': self.full_output_path,
             'sample_time_collapse': self.sample_time_collapse,
             'prompt': self.prompt,
+            'sample_eval_report': self.sample_eval_report,
         }
     @property
     def key(self):
@@ -244,7 +244,7 @@ def evaluator_sample(code, sample_input_path, sample_output_path):  # sample_tes
         test_report_sample = future_report.result()
         return test_report_sample
 
-def generate_full(code, full_input_path, full_output_path, timeout=5):  # create new full output file for each case maybe
+def generate_full(code, full_input_path, full_output_path, timeout=35):  # create new full output file for each case maybe
     with ThreadPoolExecutor(max_workers=1) as executor:
         future_report = executor.submit(
             run_coroutine, 
