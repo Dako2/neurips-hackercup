@@ -39,6 +39,8 @@ class Solution:
     model_capability: str = Field(default='gpt4') # GPT4, Claude, Gemini, etc.
     solver: str = Field(default='NaN')
     
+    SELECT_LANGUAGE = "cpp"
+    
     def __init__(self, code, problem_name, sample_input_path, sample_output_path, full_input_path, model_capability): #generating test report of sample data and full eval 
         
         self.solution_folder = "generated/"
@@ -123,6 +125,108 @@ class Solution:
     @property
     def key(self):
         return list(self.value.keys())
+    
+    # DAKO: evaluator here: compile and exe .cpp, write txt to sample_output_file, compare txt vs. sample_output_solution and create test report
+    def evaluator_sample(self, code, sample_input_path, sample_output_path):  # sample_test_report, code_path ==> heapq
+    sample_input = Path(sample_input_path).read_text()
+    sample_output = Path(sample_output_path).read_text()
+    
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            if SELECT_LANGUAGE == "python":   
+                future_report = executor.submit(
+                    run_coroutine, 
+                    check_correctness(code, sample_input, sample_output, 3) # exe, compare txt
+                )
+                test_report_sample = future_report.result()
+            
+            elif SELECT_LANGUAGE == "cpp": # DAKO 1st edit
+                sample_output_file = self.generate_sample_cpp(code, SELECT_LANGUAGE, sample_output) # compiple and execute cpp -> sample_output txt
+                test_report_sample = self.check_output(sample_input_path, sample_output_file, sample_output_path)
+            
+            return test_report_sample
+        
+    # DAKO: generate full output here for cpp 
+    def generate_full_cpp(self, code, selected_language):
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            future_report = executor.submit(run_coroutine, write_full_output(1, code, self.problem, selected_language, self.logger))
+            # try:
+            full_output_file = future_report.result()
+            self.logger.info(f"write the full out to: {full_output_file}")
+            return full_output_file  
+
+
+    # ad-hoc purpose to check generated_solution txt vs txt/out
+    def check_output(self, input_data_file, model_output_file, expected_output_file):
+        starting_timer = time.time()
+
+        expected_output = Path(expected_output_file).read_text()
+        actual_output = Path(model_output_file).read_text()
+        actual_output_cases = actual_output.split("\n")
+        expected_output_cases = expected_output.split("\n")
+        success = failed = 0
+
+        input_data = Path(input_data_file).read_text()
+        total = int(input_data.split("\n")[0])
+
+        if len(actual_output_cases) == 0:
+            return TestReport(
+                total=total,
+                failed= 0,
+                success_rate = format(0, ".0%"),
+                success_rate_full = format(0, ".0%"),
+                success_rate_number = 0.0,
+                total_full=total,
+                failed_full=0,              
+                status="error",
+                message=f"There is no output generated from the source code.",
+                output=f"",
+            )
+
+        for i in range(len(actual_output_cases)):
+            # if not empty "" which can't do split(":")
+            if actual_output_cases[i].strip() and expected_output_cases[i].strip():
+            # if both numbers, compare up to 1e-7 decimals
+                try:
+                    expected_value = float(expected_output_cases[i].split(":")[1].strip()) # "Case #1: 20.710678118654748" -> 20.71067811865474
+                    actual_value = float(actual_output_cases[i].split(":")[1].strip())
+
+                    if math.isclose(expected_value, actual_value, abs_tol=1e-7):
+                        success += 1
+                    else:
+                        failed += 1
+
+                # if not numbers, perform a direct string comparison
+                except ValueError:
+                    
+                    if (expected_output_cases[i] == actual_output_cases[i]):
+                        success = success + 1
+                    else:
+                        failed = failed + 1
+
+
+        success_rate = format(success/total, ".0%")
+        success_rate_number = float(success/total)
+
+        return TestReport(
+            total=total,
+            failed= failed,
+            success_rate = success_rate,
+            success_rate_full = success_rate,
+            success_rate_number = success_rate_number,
+            total_full=total,
+            failed_full=failed,    
+            status='FAILED',
+            message="", #message,
+            output="" #f"{stdout.decode()}",
+        )
+    
+
+    def generate_sample_cpp(self, code, selected_language, sample_output): # DAKO 2nd edit
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            future_report = executor.submit(run_coroutine, write_sample_output_cpp(1, code, self.problem, sample_output, selected_language, timeout=30, logger=self.logger))
+            sample_output_file = future_report.result()
+            self.logger.info(f"write the full out to: {sample_output_file}")
+            return sample_output_file
 
 class SolutionManager:
     def __init__(self, exact_match = True):
@@ -232,17 +336,7 @@ class SolutionManager:
 
 async def check_correctness(program: str, input_data: str, expected_output: str, timeout: float) -> TestReport:
     return await exec_program(program, input_data, expected_output, timeout)
-
-def evaluator_sample(code, sample_input_path, sample_output_path):  # sample_test_report, code_path ==> heapq
-    sample_input = Path(sample_input_path).read_text()
-    sample_output = Path(sample_output_path).read_text()
-    with ThreadPoolExecutor(max_workers=1) as executor:
-        future_report = executor.submit(
-            run_coroutine, 
-            check_correctness(code, sample_input, sample_output, 3)
-        )
-        test_report_sample = future_report.result()
-        return test_report_sample
+        
 
 def generate_full(code, full_input_path, full_output_path, timeout=35):  # create new full output file for each case maybe
     with ThreadPoolExecutor(max_workers=1) as executor:
@@ -451,3 +545,77 @@ async def generate_output_async(program: str, input_file: Path, output_file: Pat
                 output=f"{output_file}",
                 time_collapse=time.time()-starting_timer
             )
+
+
+# saved both .py/.cpp and .txt file to generated folder
+async def write_sample_output_cpp(stage, source_code, problem, sample_output, selected_language, timeout = 30, logger = None): 
+    current_time = datetime.datetime.now().strftime("%y%m%d%H%M%S")
+    # sample_output_file = problem.generated_folder / f"{problem.problem_name.replace(' ', '_')}_{selected_language}_{current_time}.txt"
+    sample_output_file = sample_output
+    
+    # if selected_language == "python": # below function saved .py/.cpp and output .txt
+    #     output = await generate_output_async(current_time, problem, source_code, problem.sample_input_path, sample_output_file, timeout, logger)  # timeout in secs
+    # elif selected_language == "cpp":
+    output = await generate_output_cpp_async(current_time, problem, source_code, problem.sample_input_path, sample_output_file, timeout, logger)  # timeout in secs
+
+    if output:
+        logger.info(f'successful generated the most recent sample output: {output}')
+
+    return sample_output_file
+
+async def generate_output_cpp_async(current_time, problem, program: str, input_file: Path, output_file: Path, timeout: int, logger: Logger):
+    # current_time = datetime.datetime.now().strftime("%y%m%d%H%M%S")
+    exe_file = problem.submit_folder / f"{problem.problem_name.replace(' ', '_')}_{problem.latest_score:.1f}_cpp_{current_time}.exe"
+    cpp_file = problem.submit_folder / f"{problem.problem_name.replace(' ', '_')}_{problem.latest_score:.1f}_cpp_{current_time}.cpp"
+    save_to_disk(program, cpp_file, logger) # save the .cpp file as we save the output. this is the last code
+
+    # should create and save the file .exe
+    # compile_command = f'g++ -std=c++17 -O2 "{cpp_file}" -o "{exe_file}"' 
+    compile_command = f'g++ -std=c++17 -O2 "{cpp_file}" -o "{exe_file}" -Wl,-stack_size,0x40000000' # 20m for 512MB/40m for 1G for stack overflow
+
+    # into below to capture the error messages
+    try:
+        result = subprocess.run(
+            compile_command, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+        )
+        logger.info(f"Compilation succeeded: {result.stdout.decode()}")
+    except subprocess.CalledProcessError as e:
+        logger.error(f"Compilation failed: {e.stderr.decode()}")
+        raise RuntimeError(f"Failed to compile C++ code: {e.stderr.decode()}")
+
+    problem_name = cpp_file.stem.rsplit("_", 1)[0]
+
+    try:
+        with open(input_file, "r") as infile, open(output_file, "w") as outfile:
+            _ = subprocess.run(
+                exe_file,
+                stdin=infile,
+                stdout=outfile,
+                check=True,
+                timeout=timeout,
+            )
+
+    # except subprocess.TimeoutExpired as e:
+    # except subprocess.CalledProcessError as e:
+
+    except Exception as e:
+        logger.error(f"An unexpected error occurred during the execution of {problem_name}: {str(e)}")
+        raise e
+
+    return str(output_file) # return the path to the output file for generated results
+
+# DAKO for both python and cpp, but muting python here as you can use your own program
+async def write_full_output(stage, source_code, problem, selected_language, logger = None): 
+    current_time = datetime.datetime.now().strftime("%y%m%d%H%M%S")
+    full_output_file = problem.submit_folder / f"{problem.problem_name.replace(' ', '_')}_{problem.latest_score:.1f}_{selected_language}_{current_time}.txt"
+    
+    # try:
+    # if selected_language == "python": # below function saved .py/.cpp and output .txt
+    #     output = await generate_output_async(current_time, problem, source_code, problem.full_input_path, full_output_file, 30, logger)  # timeout in secs
+    # elif selected_language == "cpp":
+    output = await generate_output_cpp_async(current_time, problem, source_code, problem.full_input_path, full_output_file, 90, logger)  # timeout in secs
+    
+    if output:
+        logger.info(f'successful generated the most recent full output: {output}')
+
+    return full_output_file
