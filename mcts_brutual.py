@@ -28,6 +28,8 @@ logger = create_logger(f'logs/sr_MCTS_.log', f'gpt4')
 #logging.basicConfig(level=logging.INFO, format='%(message)s')
 #logger = logging.getLogger()
 
+SELECT_LANGUAGE = "cpp"
+
 # Load the model globally (only once)
 model = SentenceTransformer('all-MiniLM-L6-v2')
 
@@ -74,6 +76,7 @@ def maybe_remove_backticks(solution: str, label='python') -> str:
     solution = re.sub(f'^```{label}\s*', '', solution)
     solution = re.sub(r'\s*```$', '', solution)
     return solution
+
 
 def save_to_disk(content: str, path: Path,):
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -310,6 +313,14 @@ class SR_MCTS_LLM:
         return selected_node
 
     def expand(self, node):
+        """
+        Q: 1+1*3=?
+        A1: 1+1=2, 2*3=6
+        Evaluation: False, score: 0
+        Critique/Manager/Ochestrator: A1: wrong, A2: wrong, A3: xxx? Generate an Action: 
+        Worker: Try A4. Gen Code
+        """
+
         # Use the action as the critique
         action = self.get_action(node)
         
@@ -351,6 +362,8 @@ class SR_MCTS_LLM:
         logger.debug(f"\n@_@ - response:{response}")
         return response, json.dumps(messages)
     
+    
+
     def worker(self, node, critique): #worker role
         # Use LLM to generate improved code based on the critique
         new_code = self.coder(critique)

@@ -69,7 +69,7 @@ class Solution:
         self.model_capability = model_capability
         self.to_submit_signal = False
         
-    def eval(self, exact_match = True): #TODO: OYIYI
+    def eval(self, exact_match = True): #TODO:
         
         self.testreport = evaluator_sample(self.code, self.sample_input_path, self.sample_output_path)
         self.score = round(self.testreport.success_rate_number, 2)

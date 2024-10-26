@@ -87,7 +87,6 @@ def solver2(problem):
     #print(mcts.sm.solution_manager)
     logger.info(mcts.sm.solution_manager)
     mcts.sm.to_submit('to_submit/')
- 
 
 if __name__ == "__main__":
     #unzip_questions_if_needed()
@@ -102,7 +101,7 @@ if __name__ == "__main__":
     for problem_name in problem_names:
         problem_list.append(load_problem_training(problem_name, Path(problem_directory)))
     """
-
+  
     problem_directory = "contestData"
     problem_names = list_problem_names(problem_directory, "2024")
     problem_list = []

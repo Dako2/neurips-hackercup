@@ -312,31 +312,6 @@ class LLM:
         # Extract the response content
         self.response = response
         return self.response
-
-    def mcts_openai_messages(self, messages, temperature=None, model_name="gpt-4o-2024-08-06", n = 1):
-        """Call the OpenAI (GPT-4) model using the new ChatCompletion API."""
-        if not self.openai_client_initialized:
-            raise RuntimeError("OpenAI client is not initialized.")
-        
-        if temperature:
-            response = self.client.chat.completions.create(
-                model=model_name,
-                messages=messages,
-                temperature=temperature,  # Added temperature parameter
-                max_tokens=1024,
-                n = n,
-            )        
-        else:
-            response = self.client.chat.completions.create(
-                model=model_name,
-                messages=messages,
-                # Added temperature parameter
-                max_tokens=1024,
-                n = n,
-            )        
-        # Extract the response content
-        self.response = response
-        return self.response
     
     def initialize_gemini(self):
         """Initialize the Gemini client."""

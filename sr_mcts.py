@@ -75,6 +75,7 @@ def maybe_remove_backticks(solution: str, label='python') -> str:
     solution = re.sub(r'\s*```$', '', solution)
     return solution
 
+
 def save_to_disk(content: str, path: Path,):
     path.parent.mkdir(parents=True, exist_ok=True)
     print(content)
