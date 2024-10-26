@@ -11,6 +11,27 @@ import traceback
 import os 
 import aiofiles
 import shutil
+import math
+import subprocess
+from lib.utils import (
+    create_logger,
+    load_problem_from_folder,
+    verify_code_syntax,
+    extract_text,
+    maybe_remove_backticks,
+    save_to_disk,
+)
+from logging import Logger
+
+logger = create_logger(f'logs/mcts_cpp_.log', f'gpt4')
+
+SELECT_LANGUAGE = "cpp"
+
+def save_to_disk(content: str, path: Path,):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    print(content)
+    with path.open("w", encoding ="utf-8") as f:
+        f.write(content)
 
 class Solution:
     #input
@@ -39,9 +60,7 @@ class Solution:
     model_capability: str = Field(default='gpt4') # GPT4, Claude, Gemini, etc.
     solver: str = Field(default='NaN')
     
-    SELECT_LANGUAGE = "cpp"
-    
-    def __init__(self, code, problem_name, sample_input_path, sample_output_path, full_input_path, model_capability): #generating test report of sample data and full eval 
+    def __init__(self, code, problem, problem_name, sample_input_path, sample_output_path, full_input_path, model_capability, logger=None): #generating test report of sample data and full eval 
         
         self.solution_folder = "generated/"
         self.id = int(time.time())
@@ -49,6 +68,7 @@ class Solution:
         self.timestamp = datetime.datetime.now().strftime("%y-%m-%d-%M-%f")
         self.problem_name = problem_name
         self.code = code
+        self.problem = problem
         self.sample_input_path = sample_input_path
         self.full_input_path = full_input_path
         self.sample_output_path = sample_output_path
@@ -70,10 +90,11 @@ class Solution:
         self.full_output_status = None
         self.model_capability = model_capability
         self.to_submit_signal = False
+        self.logger = logger
         
     def eval(self, exact_match = True): #TODO:
         
-        self.testreport = evaluator_sample(self.code, self.sample_input_path, self.sample_output_path)
+        self.testreport = self.evaluator_sample(self.code, self.sample_input_path, self.sample_output_path)
         self.score = round(self.testreport.success_rate_number, 2)
 
         self.sample_eval_report_path = self.solution_folder + self.problem_name + f'_{self.score}_{self.timestamp}_sample_eval.txt'
@@ -128,9 +149,9 @@ class Solution:
     
     # DAKO: evaluator here: compile and exe .cpp, write txt to sample_output_file, compare txt vs. sample_output_solution and create test report
     def evaluator_sample(self, code, sample_input_path, sample_output_path):  # sample_test_report, code_path ==> heapq
-    sample_input = Path(sample_input_path).read_text()
-    sample_output = Path(sample_output_path).read_text()
-    
+        sample_input = Path(sample_input_path).read_text()
+        sample_output = Path(sample_output_path).read_text()
+        
         with ThreadPoolExecutor(max_workers=1) as executor:
             if SELECT_LANGUAGE == "python":   
                 future_report = executor.submit(
@@ -146,12 +167,11 @@ class Solution:
             return test_report_sample
         
     # DAKO: generate full output here for cpp 
-    def generate_full_cpp(self, code, selected_language):
+    def generate_full_cpp(self, code, selected_language, logger):
         with ThreadPoolExecutor(max_workers=1) as executor:
-            future_report = executor.submit(run_coroutine, write_full_output(1, code, self.problem, selected_language, self.logger))
+            future_report = executor.submit(run_coroutine, write_full_output(1, code, self.problem, selected_language, logger))
             # try:
             full_output_file = future_report.result()
-            self.logger.info(f"write the full out to: {full_output_file}")
             return full_output_file  
 
 
@@ -220,7 +240,6 @@ class Solution:
             output="" #f"{stdout.decode()}",
         )
     
-
     def generate_sample_cpp(self, code, selected_language, sample_output): # DAKO 2nd edit
         with ThreadPoolExecutor(max_workers=1) as executor:
             future_report = executor.submit(run_coroutine, write_sample_output_cpp(1, code, self.problem, sample_output, selected_language, timeout=30, logger=self.logger))
@@ -565,13 +584,13 @@ async def write_sample_output_cpp(stage, source_code, problem, sample_output, se
 
 async def generate_output_cpp_async(current_time, problem, program: str, input_file: Path, output_file: Path, timeout: int, logger: Logger):
     # current_time = datetime.datetime.now().strftime("%y%m%d%H%M%S")
-    exe_file = problem.submit_folder / f"{problem.problem_name.replace(' ', '_')}_{problem.latest_score:.1f}_cpp_{current_time}.exe"
-    cpp_file = problem.submit_folder / f"{problem.problem_name.replace(' ', '_')}_{problem.latest_score:.1f}_cpp_{current_time}.cpp"
-    save_to_disk(program, cpp_file, logger) # save the .cpp file as we save the output. this is the last code
+    exe_file = problem.submit_folder / f"{problem.problem_name.replace(' ', '_')}__cpp_{current_time}.exe"
+    cpp_file = problem.submit_folder / f"{problem.problem_name.replace(' ', '_')}_0_cpp_{current_time}.cpp"
+    save_to_disk(program, cpp_file) # save the .cpp file as we save the output. this is the last code
 
     # should create and save the file .exe
     # compile_command = f'g++ -std=c++17 -O2 "{cpp_file}" -o "{exe_file}"' 
-    compile_command = f'g++ -std=c++17 -O2 "{cpp_file}" -o "{exe_file}" -Wl,-stack_size,0x40000000' # 20m for 512MB/40m for 1G for stack overflow
+    compile_command = f'g++ -std=c++17 -O2 "{cpp_file}" -o "{exe_file}" -Wl,-stack_size,0x20000000' # 20m for 512MB/40m for 1G for stack overflow
 
     # into below to capture the error messages
     try:
@@ -619,3 +638,134 @@ async def write_full_output(stage, source_code, problem, selected_language, logg
         logger.info(f'successful generated the most recent full output: {output}')
 
     return full_output_file
+
+if __name__ == '__main__':
+
+    from lib.utils import load_problem_from_folder, list_problem_names, load_problem_training, load_problem_v2024
+    from pathlib import Path
+
+    problem_directory = "contestData"
+    problem_names = list_problem_names(problem_directory, "2024")
+    problem_list = []
+    for problem_name in problem_names:
+        problem_list.append(load_problem_v2024(problem_name, Path(problem_directory)))
+    problem = problem_list[4]
+
+    from lib.llms import LLM
+    strong_llm = LLM(model_name="gpt4")
+    simple_initial_advisor_prompt = """Write a complete code program to solve complex algorithmic problems. 
+    - Ensure that the code includes a main function and is structured so that the program is executable when run, following the conventions of {selected_language}.
+    - Do not use any external libraries; only stick to {selected_language} standard library
+
+    Problem: {problem}"""
+
+    def coder(problem): #implement the code; fixed context length simple response
+        """Processes assistant output to extract and verify the source code."""
+        messages = [{'role': 'user', 'content': simple_initial_advisor_prompt.format(problem=problem.problem_description, selected_language="cpp")}]
+        out = strong_llm.run_messages(messages=messages)
+        
+        code = extract_text(out, '<source_code>')
+        code = maybe_remove_backticks(code)
+        return code
+    
+    code = """#include <iostream>
+#include <string>
+#include <vector>
+#include <algorithm>
+#include <unordered_map>
+
+#define MOD 998244353
+
+using namespace std;
+
+// Function to calculate the number of ways to decode a string
+long long countDecodings(const string &s) {
+    int n = s.size();
+    vector<long long> dp(n + 1, 0);
+    dp[0] = 1; // Base case: one way to decode an empty string
+
+    for (int i = 1; i <= n; ++i) {
+        if (s[i - 1] != '0') {
+            dp[i] = dp[i - 1]; // Single digit decoding is valid
+        }
+        if (i > 1) {
+            int twoDigit = (s[i - 2] - '0') * 10 + (s[i - 1] - '0');
+            if (twoDigit >= 10 && twoDigit <= 26) {
+                dp[i] = (dp[i] + dp[i - 2]) % MOD; // Two-digit decoding is valid
+            }
+        }
+    }
+
+    return dp[n];
+}
+
+// Function to replace '?' with digits and calculate max decodings
+pair<string, long long> solveCase(const string &E, int K) {
+    vector<string> candidates;
+    string current = E;
+
+    // Generate possible replacements for '?'
+    function<void(int)> backtrack = [&](int index) {
+        if (index == current.size()) {
+            candidates.push_back(current);
+            return;
+        }
+
+        if (current[index] == '?') {
+            for (char c = '0'; c <= '9'; ++c) {
+                current[index] = c;
+                backtrack(index + 1);
+                current[index] = '?';
+            }
+        } else {
+            backtrack(index + 1);
+        }
+    };
+
+    backtrack(0);
+
+    // Count decodings for each candidate
+    unordered_map<string, long long> decodingCount;
+    long long maxDecodings = 0;
+
+    for (const string &candidate : candidates) {
+        long long count = countDecodings(candidate);
+        decodingCount[candidate] = count;
+        maxDecodings = max(maxDecodings, count);
+    }
+
+    // Collect candidates with the maximum decodings
+    vector<string> maxCandidates;
+    for (const auto &entry : decodingCount) {
+        if (entry.second == maxDecodings) {
+            maxCandidates.push_back(entry.first);
+        }
+    }
+
+    // Sort and find the K-th lexicographically largest
+    sort(maxCandidates.begin(), maxCandidates.end());
+    string result = maxCandidates[K - 1];
+
+    return {result, maxDecodings};
+}
+
+int main() {
+    int T;
+    cin >> T;
+
+    for (int t = 1; t <= T; ++t) {
+        string E;
+        int K;
+        cin >> E >> K;
+
+        auto result = solveCase(E, K);
+        cout << "Case #" << t << ": " << result.first << " " << result.second % MOD << endl;
+    }
+
+    return 0;
+}
+"""
+    print(code)
+    s = Solution(code, problem, problem.problem_name, problem.sample_input_path, problem.sample_output_path, problem.full_input_path, "gpt4", logger) #generating test report of sample data and full eval 
+    s.eval()
+
