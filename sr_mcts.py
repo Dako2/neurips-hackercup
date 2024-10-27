@@ -187,8 +187,8 @@ class Node:
         self.tried_actions = set()
         self.depth = depth  # Track the depth of the node
         if self.depth == 0:
-            self.untried_actions = get_possible_actions(plans_xml)
-            #self.untried_actions = self.get_possible_actions()
+            #self.untried_actions = get_possible_actions(plans_xml)
+            self.untried_actions = self.get_possible_actions()
         elif self.depth > 0 and self.depth < 2:
             self.untried_actions = self.get_possible_actions()    
         else:
@@ -204,7 +204,32 @@ class Node:
         return [
             "Refine the method to improve the correction and time complexity",
             #"Adjust logic for fewer loops.",
-            "Check out the details of problem statement again to improve the correction and time complexity"
+            """You solved problem incorrectly on sample inputs due to timeout on large input.
+Here is a similar problem. Learn from the problem and its solution and try again.
+<core_question>
+Given a string of length n containing 'B', 'W', and 'X' characters, and an integer k, count the number of ways to replace 'X' with 'B' or 'W' such that the resulting string contains two non-overlapping substrings of length k, one consisting of only 'B's and the other of only 'W's.
+</core_question>
+<difference>
+1. The correct solution uses separate arrays for prefix/suffix sums (fs, gs)
+2. It handles the modulo operations more carefully throughout
+3. It uses additional counter arrays (qx, qw, qb) to track character counts
+4. The final calculation combines f and w arrays differently
+5. The correct solution avoids the IndexError by proper array initialization
+</difference>
+<rationale>
+1. Prefix/suffix sums allow for faster range queries
+2. Careful modulo handling prevents overflow errors
+3. Counter arrays enable quick character count checks
+4. The different combination method correctly accounts for all valid positions
+5. Proper array sizing prevents index out of range errors
+</rationale>
+<reflection>
+My solution attempted a similar dynamic programming approach but lacked some crucial optimizations and had implementation errors. The correct solution is more efficient in handling queries and avoids potential overflow issues. It also correctly accounts for all possible beautiful string configurations.
+</reflection>
+<correct_solution>
+Mod=1000000007\nn,k=map(int,input().split(' '))\ns=' '+input()\nf,fs,g,gs,w=[0]*1000005,[0]*1000005,[0]*1000005,[0]*1000005,[0]*1000005\nqx,qw,qb=[0]*1000005,[0]*1000005,[0]*1000005\nq=0\nf[0]=fs[0]=1\nfor i in range(1,n+1):\n\tlg=(i-k if i-k>=q else q)\n\tif s[i]!='B':\n\t\tf[i]=fs[i-1]-fs[lg-1]+Mod\n\t\tf[i]-=(Mod if f[i]>=Mod else 0)\n\telse:\n\t\tf[i]=0\n\tfs[i]=fs[i-1]+f[i]\n\tfs[i]-=(Mod if fs[i]>=Mod else 0)\n\tif s[i]=='W':\n\t\tq=i;\ng[n+1]=gs[n+1]=1\nq=n+1\nfor i in range(n,0,-1):\n\trg=(i+k if i+k<=q else q)\n\tif s[i]!='W':\n\t\tg[i]=gs[i+1]-gs[rg+1]+Mod\n\t\tg[i]-=(Mod if g[i]>=Mod else 0)\n\telse:\n\t\tg[i]=0\n\tgs[i]=gs[i+1]+g[i]\n\tgs[i]-=(Mod if gs[i]>=Mod else 0)\n\tif s[i]=='B':\n\t\tq=i;\nfor i in range(1,n+1):\n\tqx[i],qb[i],qw[i]=qx[i-1]+(s[i]=='X'),qb[i-1]+(s[i]=='B'),qw[i-1]+(s[i]=='W')\nfor i in range(n,0,-1):\n\tw[i]=w[i+1]\n\tif s[i]=='X':\n\t\tw[i]*=2\n\t\tw[i]-=(Mod if w[i]>=Mod else 0)\n\tif i+k-1<=n:\n\t\tif qb[i+k-1]-qb[i-1]==0:\n\t\t\tw[i]+=g[i+k]\n\t\t\tw[i]-=(Mod if w[i]>=Mod else 0)\nans=0\nfor i in range(k,n+1):\n\tif qw[i]-qw[i-k]==0:\n\t\tans=(ans+f[i-k]*w[i+1])%Mod\nprint(ans)
+</correct_solution>
+""",
         ]
 
     def add_child(self, state, code, parent, action=None, prompt=None):
@@ -389,10 +414,15 @@ class SR_MCTS_LLM:
         messages = [{'role': 'user', 'content': prompt}]
         messages.extend(conversation_history)
         return messages
-
-    def summarize_state(self, context):
-        return context
-
+    
+    def summarize_state(self, evaluation_text):
+        """Summarize the evaluation text to reduce length."""
+        max_length = 200
+        if len(evaluation_text) > max_length:
+            return evaluation_text[:max_length] + '...'+ evaluation_text[-max_length:] 
+        else:
+            return evaluation_text
+ 
     def heuristic_score(self, uniqueness_score, correct, full_status):
         if full_status=='timeout':
             efficiency = -10
@@ -500,73 +530,7 @@ for problem_name in problem_names:
 import xml.etree.ElementTree as ET
 
 plans_xml = '''
-<solutions>
-    <solution>
-        <method>Digit Decomposition and Search</method>
-        <description>Construct potential mountain numbers using a valid digit sequence and check criteria including divisibility.</description>
-        <complexity>Feasible but depends on efficient generation of candidate numbers</complexity>
-        <steps>
-            <step>Precompute possible digit patterns for numbers with 2k+1 digits where digits are non-zero.</step>
-            <step>Divide the range [A, B] into smaller manageable chunks and search within each chunk.</step>
-            <step>Within each chunk, generate possible mountain numbers using valid digit patterns.</step>
-            <step>Check each candidate number for the middle digit uniqueness and divisibility by M.</step>
-            <step>Use generators to yield valid mountain numbers to reduce memory overhead.</step>
-            <step>Count valid mountains that are also multiples of M.</step>
-        </steps>
-    </solution>
-    <solution>
-        <method>Dynamic Programming with Memoization</method>
-        <description>Utilize recursion with memoization to efficiently count mountains based on prior computed states.</description>
-        <complexity>Lower complexity due to avoidance of redundant calculations</complexity>
-        <steps>
-            <step>Implement a recursive function to generate mountain configurations up to a certain length.</step>
-            <step>Use a memoization table to store results of subproblems that are repeatedly calculated.</step>
-            <step>Ensure that generated sequences are checked for middle uniqueness and divisibility by M.</step>
-            <step>Combine results from subproblems to construct solutions for larger ranges.</step>
-            <step>Adapt the process to only generate mountains within the range [A, B] as necessary.</step>
-        </steps>
-    </solution>
-    <solution>
-        <method>Binary Search with Iterative Construction</method>
-        <description>Use binary search to focus on potential middle digits and iteratively construct valid mountain numbers.</description>
-        <complexity>Moderate, uses binary search to reduce search space significantly but requires careful number construction</complexity>
-        <steps>
-            <step>Identify possible middle digits based on the constraints (unique and suitable for the number's length).</step>
-            <step>Apply binary search on the middle digit to optimize finding potential mountain configurations.</step>
-            <step>For each middle digit, iteratively construct the rest of the mountain number ensuring constraints are met.</step>
-            <step>Check each complete number for multipliers of M conditionally.</step>
-            <step>Prune and adjust ranges using binary search results to quickly bypass entire incompatible sequences.</step>
-            <step>Count suspected mountains that fit all conditions within [A, B].</step>
-        </steps>
-    </solution>
-    <solution>
-        <method>Graph-Based Approach with Constraints Encoding</method>
-        <description>Model the problem as a graph where nodes represent digits and paths represent valid sequences.</description>
-        <complexity>Efficient in exploring connections but requires ingenuity in graph creation and traversal</complexity>
-        <steps>
-            <step>Create graph nodes representing each non-zero digit (1 through 9).</step>
-            <step>Establish directed edges based on allowable transitions respecting the mountain constraints (non-decreasing or non-increasing order).</step>
-            <step>Initiate search from every potential starting node up to the middle digit level.</step>
-            <step>From the middle digit, ensure uniqueness and continue building paths downwards.</step>
-            <step>Explore paths while ensuring they remain within the numerical boundaries defined by [A, B].</step>
-            <step>For valid paths that meet the criteria, check if the resulting number is divisible by M.</step>
-            <step>Count all valid paths that meet these conditions.</step>
-        </steps>
-    </solution>
-    <solution>
-        <method>Segmented Sieve Adaptation for Multiples</method>
-        <description>Extend the segmented sieve concept to efficiently identify multiples of M which appear as mountain numbers.</description>
-        <complexity>Low for number ranges where sieve is appropriate; benefits greatly from parallelization</complexity>
-        <steps>
-            <step>Utilize a segmented sieve to precompute multiples of M within the range [A, B].</step>
-            <step>Adjust the sieve to filter out only those numbers which fit the 2k+1 mountain shape constraints.</step>
-            <step>Check the shape of identified multiples to ensure they qualify as mountain numbers.</step>
-            <step>Use the sieve results to quickly eliminate large blocks of numbers, narrowing focus to potential mountains.</step>
-            <step>Count valid mountain numbers ascertained from this sieving process that lie within [A, B].</step>
-            <step>This method can leverage parallel computing to significantly speed up processing in vast ranges.</step>
-        </steps>
-    </solution>
-</solutions>
+
 '''
 def convert_xml_to_list(plans_xml):
     import xml.etree.ElementTree as ET
@@ -605,6 +569,7 @@ problem_list = []
 for problem_name in problem_names:
     problem_list.append(load_problem_v2024(problem_name, Path(problem_directory)))
 problem = problem_list[4]
+print(problem.problem_name)
 
 # Instantiate the SR_MCTS_LLM algorithm
 sr_mcts_llm = SR_MCTS_LLM(problem, max_nodes=30)

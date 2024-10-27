@@ -16,3 +16,4 @@ _not_upload/
 to_submit/*
 *.zip
 *.Identifier
+.DS_Store

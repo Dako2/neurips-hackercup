@@ -200,6 +200,7 @@ class Solution:
                 status="error",
                 message=f"There is no output generated from the source code.",
                 output=f"",
+                time_collapse=0,
             )
 
         for i in range(len(actual_output_cases)):
@@ -223,11 +224,12 @@ class Solution:
                     else:
                         failed = failed + 1
 
-
         success_rate = format(success/total, ".0%")
         success_rate_number = float(success/total)
 
         return TestReport(
+            status='FAILED',
+            message="", #message,
             total=total,
             failed= failed,
             success_rate = success_rate,
@@ -235,9 +237,8 @@ class Solution:
             success_rate_number = success_rate_number,
             total_full=total,
             failed_full=failed,    
-            status='FAILED',
-            message="", #message,
-            output="" #f"{stdout.decode()}",
+            output="", #f"{stdout.decode()}",
+            time_collapse=0,
         )
     
     def generate_sample_cpp(self, code, selected_language, sample_output): # DAKO 2nd edit
@@ -644,12 +645,14 @@ if __name__ == '__main__':
     from lib.utils import load_problem_from_folder, list_problem_names, load_problem_training, load_problem_v2024
     from pathlib import Path
 
-    problem_directory = "contestData"
+    problem_directory = "dataset/2024/Round2"
     problem_names = list_problem_names(problem_directory, "2024")
     problem_list = []
     for problem_name in problem_names:
         problem_list.append(load_problem_v2024(problem_name, Path(problem_directory)))
-    problem = problem_list[4]
+    problem = problem_list[1]
+
+    print(problem.problem_name)
 
     from lib.llms import LLM
     strong_llm = LLM(model_name="gpt4")
@@ -659,7 +662,7 @@ if __name__ == '__main__':
 
     Problem: {problem}"""
 
-    def coder(problem): #implement the code; fixed context length simple response
+    def manager(problem): #implement the code; fixed context length simple response
         """Processes assistant output to extract and verify the source code."""
         messages = [{'role': 'user', 'content': simple_initial_advisor_prompt.format(problem=problem.problem_description, selected_language="cpp")}]
         out = strong_llm.run_messages(messages=messages)
@@ -668,104 +671,48 @@ if __name__ == '__main__':
         code = maybe_remove_backticks(code)
         return code
     
-    code = """#include <iostream>
-#include <string>
-#include <vector>
-#include <algorithm>
-#include <unordered_map>
+    # Using
+    EXTRACT_CODE_PROMPT = """Extract the code from the response and update it as neccessary, ensuring it's an executable {selected_language} program.
+    - ***code only!*** Remove any surrounding ```{selected_language}` tags or explanations. 
+    - For C++:
+    - Use only standard libraries; **do not use or include `bits/stdc++.h`**.
+    - Remember declare or define identifier (variable, function, etc.)
+    - **Include necessary standard headers explicitly at the beginning of the code**. Include other headers as needed, such as <cmath>, <limits>, <functional>. For example:
+        #include <iostream>
+        #include <vector>
+        #include <algorithm>
+    - For Python:
+    - Include an `if __name__ == "__main__":` block.
+    - DO NOT USE threading
 
-#define MOD 998244353
+    Current response containing code:
+    {output}
+    """
 
-using namespace std;
-
-// Function to calculate the number of ways to decode a string
-long long countDecodings(const string &s) {
-    int n = s.size();
-    vector<long long> dp(n + 1, 0);
-    dp[0] = 1; // Base case: one way to decode an empty string
-
-    for (int i = 1; i <= n; ++i) {
-        if (s[i - 1] != '0') {
-            dp[i] = dp[i - 1]; // Single digit decoding is valid
-        }
-        if (i > 1) {
-            int twoDigit = (s[i - 2] - '0') * 10 + (s[i - 1] - '0');
-            if (twoDigit >= 10 && twoDigit <= 26) {
-                dp[i] = (dp[i] + dp[i - 2]) % MOD; // Two-digit decoding is valid
+    # worker to extract code
+    def worker(out0, selected_language):
+        extract_code_message = EXTRACT_CODE_PROMPT.format(
+            output=out0,
+            selected_language=selected_language)
+        
+        messages1 = [
+            {
+                'role': 'user',
+                'content': extract_code_message
             }
-        }
-    }
+        ]
 
-    return dp[n];
-}
+        code = strong_llm.run_messages(messages=messages1)
+        if '<source_code>' in code:
+            code = extract_text(code, '<source_code>')
 
-// Function to replace '?' with digits and calculate max decodings
-pair<string, long long> solveCase(const string &E, int K) {
-    vector<string> candidates;
-    string current = E;
-
-    // Generate possible replacements for '?'
-    function<void(int)> backtrack = [&](int index) {
-        if (index == current.size()) {
-            candidates.push_back(current);
-            return;
-        }
-
-        if (current[index] == '?') {
-            for (char c = '0'; c <= '9'; ++c) {
-                current[index] = c;
-                backtrack(index + 1);
-                current[index] = '?';
-            }
-        } else {
-            backtrack(index + 1);
-        }
-    };
-
-    backtrack(0);
-
-    // Count decodings for each candidate
-    unordered_map<string, long long> decodingCount;
-    long long maxDecodings = 0;
-
-    for (const string &candidate : candidates) {
-        long long count = countDecodings(candidate);
-        decodingCount[candidate] = count;
-        maxDecodings = max(maxDecodings, count);
-    }
-
-    // Collect candidates with the maximum decodings
-    vector<string> maxCandidates;
-    for (const auto &entry : decodingCount) {
-        if (entry.second == maxDecodings) {
-            maxCandidates.push_back(entry.first);
-        }
-    }
-
-    // Sort and find the K-th lexicographically largest
-    sort(maxCandidates.begin(), maxCandidates.end());
-    string result = maxCandidates[K - 1];
-
-    return {result, maxDecodings};
-}
-
-int main() {
-    int T;
-    cin >> T;
-
-    for (int t = 1; t <= T; ++t) {
-        string E;
-        int K;
-        cin >> E >> K;
-
-        auto result = solveCase(E, K);
-        cout << "Case #" << t << ": " << result.first << " " << result.second % MOD << endl;
-    }
-
-    return 0;
-}
-"""
+        code = maybe_remove_backticks(code)
+        return code
+        
+    code = manager(problem)
+    code = worker(code, SELECT_LANGUAGE)
     print(code)
+
     s = Solution(code, problem, problem.problem_name, problem.sample_input_path, problem.sample_output_path, problem.full_input_path, "gpt4", logger) #generating test report of sample data and full eval 
-    s.eval()
+    testreport, full_testreport = s.eval()
 
