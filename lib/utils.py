@@ -63,9 +63,14 @@ def maybe_remove_backticks(solution: str) -> str:
     solution = solution.strip()
     solution = re.sub(r'^```python\s*', '', solution)
     solution = re.sub(r'\s*```$', '', solution)
+
+    solution = solution.strip()
+    solution = re.sub(r'^```cpp\s*', '', solution)
+    solution = re.sub(r'\s*```$', '', solution)
     return solution
 
 def save_to_disk(content: str, path: Path,):
+    path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     print(content)
     with path.open("w", encoding ="utf-8") as f:
@@ -240,7 +245,7 @@ class TestReport(BaseModel):
     success_rate_full: str
     failed_full: int
     output: str
-    time_collapse: float
+    time_collapse: Optional[float] = Field(default=0.0)
 
     @property
     def content(self) -> str:

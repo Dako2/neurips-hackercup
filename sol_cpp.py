@@ -92,7 +92,7 @@ class Solution:
         self.to_submit_signal = False
         self.logger = logger
         
-    def eval(self, exact_match = True): #TODO:
+    def eval(self, exact_match = True, logger=None): #TODO:
         
         self.testreport = self.evaluator_sample(self.code, self.sample_input_path, self.sample_output_path)
         self.score = round(self.testreport.success_rate_number, 2)
@@ -107,7 +107,7 @@ class Solution:
         
         if not exact_match or self.testreport.status in ['passed'] or self.testreport.success_rate_number > 0.3:
             self.full_output_path = self.solution_folder + self.problem_name + f'_{self.score}_{self.timestamp}_full_out.txt'
-            self.full_testreport = generate_full(self.code, self.full_input_path, self.full_output_path)
+            self.full_testreport = self.generate_full_cpp(self.code, SELECT_LANGUAGE, logger)
             self.full_output_status = self.full_testreport.status
             if self.full_output_status in ["complete"] and self.testreport.status in ['passed']:
                 self.to_submit_signal=True
@@ -116,7 +116,21 @@ class Solution:
         with open(self.code_path, 'w') as f:
             f.write(self.code)        
         return self.testreport, self.full_testreport
- 
+     
+    def generate_sample_cpp(self, code, selected_language, sample_output): # DAKO 2nd edit
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            future_report = executor.submit(run_coroutine, write_sample_output_cpp(1, code, self.problem, sample_output, selected_language, timeout=30, logger=self.logger))
+            sample_output_file = future_report.result()
+            self.logger.info(f"write the sample out to: {sample_output_file}")
+            return sample_output_file
+
+    # DAKO: generate full output here for cpp 
+    def generate_full_cpp(self, code, selected_language, logger):
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            future_report = executor.submit(run_coroutine, write_full_output(1, code, self.problem, selected_language, logger))
+            full_output_file = future_report.result()
+            self.logger.info(f"write the full out to: {sample_output_file}")
+            return full_output_file  
     
     @property
     def check(self):
@@ -166,13 +180,6 @@ class Solution:
             
             return test_report_sample
         
-    # DAKO: generate full output here for cpp 
-    def generate_full_cpp(self, code, selected_language, logger):
-        with ThreadPoolExecutor(max_workers=1) as executor:
-            future_report = executor.submit(run_coroutine, write_full_output(1, code, self.problem, selected_language, logger))
-            # try:
-            full_output_file = future_report.result()
-            return full_output_file  
 
 
     # ad-hoc purpose to check generated_solution txt vs txt/out
@@ -202,23 +209,22 @@ class Solution:
                 output=f"",
                 time_collapse=0,
             )
+    
+        is_number_tag = is_number(expected_output_cases[0].split(":")[1].strip())
 
         for i in range(len(actual_output_cases)):
             # if not empty "" which can't do split(":")
             if actual_output_cases[i].strip() and expected_output_cases[i].strip():
             # if both numbers, compare up to 1e-7 decimals
-                try:
-                    expected_value = float(expected_output_cases[i].split(":")[1].strip()) # "Case #1: 20.710678118654748" -> 20.71067811865474
-                    actual_value = float(actual_output_cases[i].split(":")[1].strip())
-
+                if is_number_tag:
+                    expected_value = float(expected_output_cases[i].split(":")[-1].strip()) # "Case #1: 20.710678118654748" -> 20.71067811865474
+                    actual_value = float(actual_output_cases[i].split(":")[-1].strip())
                     if math.isclose(expected_value, actual_value, abs_tol=1e-7):
                         success += 1
                     else:
                         failed += 1
-
                 # if not numbers, perform a direct string comparison
-                except ValueError:
-                    
+                else:
                     if (expected_output_cases[i] == actual_output_cases[i]):
                         success = success + 1
                     else:
@@ -226,27 +232,42 @@ class Solution:
 
         success_rate = format(success/total, ".0%")
         success_rate_number = float(success/total)
+        if success_rate_number < 1:
+            return TestReport(
+                status='FAILED',
+                message=f"The sample test has a success rate of {success_rate}", #message,
+                total=total,
+                failed= failed,
+                success_rate = success_rate,
+                success_rate_full = success_rate,
+                success_rate_number = success_rate_number,
+                total_full=total,
+                failed_full=failed,    
+                output="", #f"{stdout.decode()}",
+                time_collapse=0,
+            )
+        else:
+            return TestReport(
+                status='passed',
+                message="The sample evaluation succeeds.", #message,
+                total=total,
+                failed= failed,
+                success_rate = success_rate,
+                success_rate_full = success_rate,
+                success_rate_number = success_rate_number,
+                total_full=total,
+                failed_full=failed,    
+                output="", #f"{stdout.decode()}",
+                time_collapse=0,
+            )
 
-        return TestReport(
-            status='FAILED',
-            message="", #message,
-            total=total,
-            failed= failed,
-            success_rate = success_rate,
-            success_rate_full = success_rate,
-            success_rate_number = success_rate_number,
-            total_full=total,
-            failed_full=failed,    
-            output="", #f"{stdout.decode()}",
-            time_collapse=0,
-        )
-    
-    def generate_sample_cpp(self, code, selected_language, sample_output): # DAKO 2nd edit
-        with ThreadPoolExecutor(max_workers=1) as executor:
-            future_report = executor.submit(run_coroutine, write_sample_output_cpp(1, code, self.problem, sample_output, selected_language, timeout=30, logger=self.logger))
-            sample_output_file = future_report.result()
-            self.logger.info(f"write the full out to: {sample_output_file}")
-            return sample_output_file
+def is_number(s):
+    try:
+        float(s)  # Attempt to convert the string to a float
+        return True
+    except ValueError:
+        return False
+
 
 class SolutionManager:
     def __init__(self, exact_match = True):
@@ -544,7 +565,7 @@ async def generate_output_async(program: str, input_file: Path, output_file: Pat
                 success_rate_number=0.0,
                 failed_full=0,              
                 status="error",
-                message=f"error in execution of full evaluation",
+                message=f"Error: {stderr.decode().strip()}",
                 output=f"{output_file}",
                 time_collapse=time.time()-starting_timer
             )
@@ -570,14 +591,9 @@ async def generate_output_async(program: str, input_file: Path, output_file: Pat
 # saved both .py/.cpp and .txt file to generated folder
 async def write_sample_output_cpp(stage, source_code, problem, sample_output, selected_language, timeout = 30, logger = None): 
     current_time = datetime.datetime.now().strftime("%y%m%d%H%M%S")
-    # sample_output_file = problem.generated_folder / f"{problem.problem_name.replace(' ', '_')}_{selected_language}_{current_time}.txt"
-    sample_output_file = sample_output
-    
-    # if selected_language == "python": # below function saved .py/.cpp and output .txt
-    #     output = await generate_output_async(current_time, problem, source_code, problem.sample_input_path, sample_output_file, timeout, logger)  # timeout in secs
-    # elif selected_language == "cpp":
+    sample_output_file = "generated/" + f"{problem.problem_name.replace(' ', '_')}_{selected_language}_{current_time}.txt"
+    #sample_output_file = sample_output
     output = await generate_output_cpp_async(current_time, problem, source_code, problem.sample_input_path, sample_output_file, timeout, logger)  # timeout in secs
-
     if output:
         logger.info(f'successful generated the most recent sample output: {output}')
 
@@ -592,7 +608,6 @@ async def generate_output_cpp_async(current_time, problem, program: str, input_f
     # should create and save the file .exe
     # compile_command = f'g++ -std=c++17 -O2 "{cpp_file}" -o "{exe_file}"' 
     compile_command = f'g++ -std=c++17 -O2 "{cpp_file}" -o "{exe_file}" -Wl,-stack_size,0x20000000' # 20m for 512MB/40m for 1G for stack overflow
-
     # into below to capture the error messages
     try:
         result = subprocess.run(
@@ -714,5 +729,5 @@ if __name__ == '__main__':
     print(code)
 
     s = Solution(code, problem, problem.problem_name, problem.sample_input_path, problem.sample_output_path, problem.full_input_path, "gpt4", logger) #generating test report of sample data and full eval 
-    testreport, full_testreport = s.eval()
+    testreport, fullreport = s.eval(logger=logger)
 

@@ -632,4 +632,4 @@ print(sr_mcts_llm.sm.solution_manager)
 
 sr_mcts_llm.sm.save(file_path=f"sm_sr_mcts_cpp_{problem.problem_name}")
 print_tree(sr_mcts_llm.root, "", sr_mcts_llm.root)
-
+sr_mcts_llm.sm.to_submit()
