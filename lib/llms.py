@@ -12,6 +12,8 @@ from openai import AsyncOpenAI
 
 from llama_index.llms.ollama import Ollama
 import json
+import urllib
+import urllib.request
 
 # Load environment variables from .env file
 load_dotenv()
@@ -400,7 +402,50 @@ class LLM:
         else:
             print(self.model_name)
             raise ValueError("model selection error in run_messages")
-        
+
+# Function to query the LLM (your 'query_model' function)
+def call_llama(prompt, model="llama3.1", seed=None, url="http://localhost:11434/api/chat"):
+    """
+    Calls the LLM with the given prompt and returns the response.
+    """
+    if seed is None:
+        seed = random.randint(1, 1000)
+
+    messages = [
+        {
+            "role": "user",
+            "content": prompt
+        }
+    ]
+
+    data = {
+        "model": model,
+        "messages": messages,
+        "options": {
+            "seed": seed,
+            "temperature": 1,
+            "num_ctx": 2048  # Ensure consistent output
+        }
+    }
+
+    payload = json.dumps(data).encode("utf-8")
+    request = urllib.request.Request(url, data=payload, method="POST")
+    request.add_header("Content-Type", "application/json")
+
+    response_data = ""
+    try:
+        with urllib.request.urlopen(request) as response:
+            while True:
+                line = response.readline().decode("utf-8")
+                if not line:
+                    break
+                response_json = json.loads(line)
+                response_data += response_json["message"]["content"]
+    except Exception as e:
+        raise ImportError
+    #logger.info(f"LLM Response: {response_data}")
+    return response_data.strip()
+
 # Example usage
 if __name__ == "__main__":
     #- Key constraints and unique conditions

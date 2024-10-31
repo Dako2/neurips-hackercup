@@ -13,6 +13,7 @@ import aiofiles
 import shutil
 import subprocess
 import math
+import logging
 
 class SolutionManager:
     def __init__(self, exact_match = True):
@@ -98,7 +99,7 @@ class SolutionManager:
 
         #full_output_path
         if sol.full_output_status not in ['complete'] or not Path(sol.full_gen_output_path).exists():
-            _ = generate_full(sol.code, sol.full_input_path, sol.full_gen_output_path, timeout=90)
+            _ = generate_full(sol.code, sol.full_input_path, sol.full_gen_output_path, timeout=60)
         
         new_path = Path("to_submit/") / Path(sol.full_gen_output_path).name.replace("score", str(round(sol.score, 2)))
         if Path(sol.full_gen_output_path).exists():
@@ -123,12 +124,16 @@ class SolutionManager:
         combined_df.to_pickle(file_path)
 
 class Solution:
-    def __init__(self, code, problem, model_capability, solver, lang="py"): #py, cpp
+    def __init__(self, code, problem, model_capability, solver, lang="py", logger=None): #py, cpp
         self.code = code
         self.problem = problem
         self.model_capability = model_capability #GPT, Gemini, ...
         self.solver = solver #RAG, MCTS, BG, ...
         self.lang = lang
+
+        self.logger=logger
+        if not self.logger:
+            self.logger = create_logger("temp.log","temp")
 
         self.to_submit_signal = False #indicator for submission / stop signal
 
@@ -220,10 +225,10 @@ class Solution:
         else:
             raise NotImplementedError
 
-    def eval_python(self, exact_match=True, logger=None): #TODO:
+    def eval_python(self, exact_match=True): #TODO:
         self.sample_testreport = evaluator_sample(self.code, self.sample_input_path, self.sample_exp_output_path)
         save_to_disk(self.code, self.code_path)
-        logger.info("sample evaluation done")
+        logging.info("sample evaluation done")
         save_to_disk(self.sample_testreport.message, self.sample_gen_output_path)
 
         self.score = round(self.sample_testreport.success_rate_number, 2)
@@ -234,10 +239,10 @@ class Solution:
         if not exact_match or self.sample_eval_status in ['passed'] or self.score > 0.3:
             self.full_testreport = generate_full(self.code, self.full_input_path, self.full_output_path)
             self.full_output_status = self.full_testreport.status
-            logger.info("full output gen done")
+            logging.info("full output gen done")
             if self.full_output_status in ["complete"] and self.sample_testreport.status in ['passed']:
                 self.to_submit_signal=True
-                logger.info("success! ready to submit!")
+                logging.info("success! ready to submit!")
         return self.sample_testreport, self.full_testreport
 
     def eval_cpp(self, exact_match=True, logger=None): #TODO:
@@ -248,11 +253,11 @@ class Solution:
             return self.sample_testreport, self.full_testreport
         
         self.exe_file = Path(self.code_path).with_suffix(".exe")
-        logger.info("compilation done")
+        logging.info("compilation done")
         
         self.sample_testreport = evaluator_sample_cpp(self.exe_file, self.sample_input_path, self.sample_exp_output_path)
         save_to_disk(self.sample_testreport.message, self.sample_gen_output_path)
-        logger.info("sample evaluation done")
+        logging.info("sample evaluation done")
         
         self.score = round(self.sample_testreport.success_rate_number, 2)
         self.sample_eval_status = self.sample_testreport.status
@@ -260,12 +265,12 @@ class Solution:
         self.sample_time_collapse = self.sample_testreport.time_collapse
         
         if not exact_match or self.sample_eval_status in ['passed'] or self.score > 0.5:
-            self.full_testreport = generate_full_cpp(self.exe_file, self.full_input_path, self.full_gen_output_path, timeout=120)
+            self.full_testreport = generate_full_cpp(self.exe_file, self.full_input_path, self.full_gen_output_path, timeout=10)
             self.full_output_status = self.full_testreport.status
-            logger.info("full output gen done")
+            logging.info("full output gen done")
             if self.full_output_status in ["complete"] and self.sample_testreport.status in ['passed']:
                 self.to_submit_signal=True
-                logger.info("success! ready to submit!")
+                logging.info("success! ready to submit!")
         return self.sample_testreport, self.full_testreport
 
     def erase_exe(self, exe_file):
@@ -808,8 +813,6 @@ async def generate_output_cpp_async(
             time_collapse=time.time() - starting_timer,
         )
     
-# if tempreport.status == 'complete': check_output()
-# ad-hoc purpose to check generated_solution txt vs txt/out
 def check_output(input_data_file, model_output_file, expected_output_file):
     expected_output = Path(expected_output_file).read_text()
     actual_output = Path(model_output_file).read_text()
@@ -869,100 +872,3 @@ def check_output(input_data_file, model_output_file, expected_output_file):
         output="",
     )
 
-
-if __name__ == '__main__':
-
-    from lib.utils import load_problem_from_folder, list_problem_names, load_problem_training, load_problem_v2024
-    from pathlib import Path
-    from lib.utils import (
-        create_logger,
-        load_problem_from_folder,
-        verify_code_syntax,
-        extract_text,
-        maybe_remove_backticks,
-        save_to_disk,)
-    
-    SELECT_LANGUAGE = 'cpp'
-    logger=create_logger("temp.log","temp")
-    
-    problem_directory = "dataset/2024/Round2"
-    problem_names = list_problem_names(problem_directory, "2024")
-    problem_list = []
-    for problem_name in problem_names:
-        problem_list.append(load_problem_v2024(problem_name, Path(problem_directory)))
-    problem = problem_list[1]
-
-    print(problem.problem_name)
-
-    from lib.llms import LLM
-    strong_llm = LLM(model_name="o1")
-    fast_llm = LLM(model_name="gpt4")
-    simple_initial_advisor_prompt = """Write a complete code program to solve complex algorithmic problems. 
-    - Ensure that the code includes a main function and is structured so that the program is executable when run, following the conventions of {selected_language}.
-    - Do not use any external libraries; only stick to {selected_language} standard library
-    Hint: Highly optimized and suited for large inputs, using advanced techniques like Fenwick Trees and binary search but is more complex to understand and debug.
-    Problem: {problem}"""
-
-    def manager(problem): #implement the code; fixed context length simple response
-        """Processes assistant output to extract and verify the source code."""
-        messages = [{'role': 'user', 'content': simple_initial_advisor_prompt.format(problem=problem.problem_description, selected_language="cpp")}]
-        out = strong_llm.run_messages(messages=messages)
-        
-        code = extract_text(out, '<source_code>')
-        code = maybe_remove_backticks(code)
-        return code
-    
-    # Using
-    EXTRACT_CODE_PROMPT = """Extract the code from the response and update it as neccessary, ensuring it's an executable {selected_language} program.
-    - ***code only!*** Remove any surrounding ```{selected_language}` tags or explanations. 
-    - For C++:
-    - Use only standard libraries; **do not use or include `bits/stdc++.h`**.
-    - Remember declare or define identifier (variable, function, etc.)
-    - **Include necessary standard headers explicitly at the beginning of the code**. Include other headers as needed, such as <cmath>, <limits>, <functional>. For example:
-        #include <iostream>
-        #include <vector>
-        #include <algorithm>
-    - For Python:
-    - Include an `if __name__ == "__main__":` block.
-    - DO NOT USE threading
-
-    Current response containing code:
-    {output}
-    """
-
-    # worker to extract code
-    def worker(out0, selected_language):
-        extract_code_message = EXTRACT_CODE_PROMPT.format(
-            output=out0,
-            selected_language=selected_language)
-        
-        messages1 = [
-            {
-                'role': 'user',
-                'content': extract_code_message
-            }
-        ]
-
-        code = fast_llm.run_messages(messages=messages1)
-        if '<source_code>' in code:
-            code = extract_text(code, '<source_code>')
-
-        code = maybe_remove_backticks(code)
-        return code
-        
-    #code = Path("generated//Bunny_Hopscotch_1730085454_score.cpp").read_text()
-    #code = Path("/Users/dako22/Downloads/bunny_hopscotch__molamola_source_code.txt").read_text() + '\n'
-    
-    #code = manager(problem)
-    #code = worker(code, SELECT_LANGUAGE)
-
-    code = Path("test_code.cpp").read_text()
-    print(code)
-    s = Solution(code, problem, "gpt4", "zeroshot", lang="cpp") #py, cpp
-    testreport, fullreport = s.eval(logger=logger)
-    sm=SolutionManager()
-    sm.add_solution(s)
-    sm.to_submit("to_submit/")
-
-
-    

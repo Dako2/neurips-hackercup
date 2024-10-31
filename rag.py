@@ -2,7 +2,6 @@ from llama_index.core import (
     StorageContext,
     Settings,
 )
-
 from llama_index.core import StorageContext, load_index_from_storage
 from llama_index.core.llms import MockLLM
 from llama_index.core.node_parser import SentenceSplitter, SentenceWindowNodeParser
@@ -31,8 +30,10 @@ class RAG:
         for node_with_score in response.source_nodes:
             output += node_with_score.node.text
         return response
-
-#rag = RAG()
-#b = rag.retrieve("Sieve of Eratosthenes", similarity_top_k=3)
+    
+if __name__ == '__main__':
+    rag = RAG()
+    b = rag.retrieve("Sieve of Eratosthenes", similarity_top_k=3)
+    print(b)
 
 
