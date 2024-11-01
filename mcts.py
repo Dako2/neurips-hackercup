@@ -1,17 +1,12 @@
 import random
 import math
-import logging
-import urllib.request
 import json
-import subprocess
-import sys
-import tempfile
 from pathlib import Path
 from collections import defaultdict
 import re 
 from solution import Solution, SolutionManager
 from lib.prompts import CODER_INSTRUCTIONS
-from lib.llms import LLM
+from lib.llms import LLM, mcts_openai_messages_v2
 from lib.utils import (
     create_logger,
     load_problem_from_folder,
@@ -23,8 +18,10 @@ from lib.utils import (
 import json 
 from sentence_transformers import SentenceTransformer, util
 
+from solver import simple_initial_advisor_prompt, _coder
+
 # Configure logging
-logger = create_logger(f'logs/sr_MCTS_.log', f'gpt4')
+
 #logging.basicConfig(level=logging.INFO, format='%(message)s')
 #logger = logging.getLogger()
 
@@ -47,6 +44,8 @@ class Node:
     def __init__(self, state, code, depth=0, parent=None, action=None, evaluation=None, prompt=None):
         self.state = state  # The current code as a string
         self.parent = parent
+        self.evaluation = evaluation
+
         self.children = []
         self.visits = 0
         self.Q = 0.0
@@ -54,7 +53,7 @@ class Node:
         self.N_sa = defaultdict(int)
         self.Q_sa = defaultdict(float)
         self.action = action  # Modification that led to this state
-        self.evaluation = evaluation
+        
         self.code = code
         self.prompt = prompt
         self.tried_actions = set()
@@ -110,8 +109,10 @@ def print_tree(node: Node, prefix: str = "", current_node: Node = None):
         print_tree(child, new_prefix, current_node)
 
 class SR_MCTS_LLM:
-    def __init__(self, problem, max_nodes, exploration_constant=1.4, alpha=0.5, gamma=0.9):
-        self.root = Node(problem.problem_description, "")
+    def __init__(self, problem, max_nodes, exploration_constant=1.4, alpha=0.5, gamma=0.9, logger = None):
+        prompt = simple_initial_advisor_prompt.format(problem=problem.problem_description, selected_language="cpp")
+        
+        self.root = Node(prompt, "")
         self.problem = problem  # List of (input, expected_output)
         self.max_nodes = max_nodes
         self.c = exploration_constant
@@ -123,19 +124,21 @@ class SR_MCTS_LLM:
         self.fast_llm = LLM(model_name='gpt4')
         self.model_name = "gpt4"
         self.strong_llm = LLM(model_name=self.model_name)
+        self.previous_solutions = set()  # Store previously generated solutions
+        self.logger = logger
+        if not self.logger:
+            self.logger = create_logger(f'logs/temp_MCTS_.log', f'temp_mcts')
 
     def search(self):
-        previous_solutions = set()  # Store previously generated solutions
-
         while self.tree_size < self.max_nodes:
             self.iteration += 1
-            logger.info(f"\nIteration {self.iteration}: Tree Size = {self.tree_size}")
+            self.logger.info(f"\nIteration {self.iteration}: Tree Size = {self.tree_size}")
             # Selection Phase
             node = self.select(self.root)
             if node is None:
-                logger.info("No node selected for expansion (all nodes pruned or terminal).")
+                self.logger.info("No node selected for expansion (all nodes pruned or terminal).")
                 break
-            logger.info(f"Selected node for expansion: Node ID {id(node)}")
+            self.logger.info(f"Selected node for expansion: Node ID {id(node)}")
             # Expansion Phase
             child_node, q_value = self.expand(node)
             print_tree(self.root, current_node=child_node)
@@ -143,7 +146,7 @@ class SR_MCTS_LLM:
             self.backpropagate(child_node, q_value)
             # Check for terminal solution
             if child_node.is_terminal():
-                logger.info("Terminal solution found.")
+                self.logger.info("Terminal solution found.")
                 break
         # Return the best solution found
         return self.get_best_solution()
@@ -180,8 +183,35 @@ class SR_MCTS_LLM:
             return None
         selected_node = random.choice(best_nodes)
         return selected_node
-
+    
     def expand(self, node):
+        # Use the action as the critique
+        action = self.get_action(node)
+
+        messages = self.build_prompt_with_feedback(node)
+        messages.extend([{'role': 'user', 'content': action}])
+        self.logger.debug(f"\n@_@ - Messages:{messages}")
+
+        n = 3
+        response = mcts_openai_messages_v2(messages, temperature=1, model_list = ['gpt4','gemini','anthropic'], n = n)
+        
+        for i in range(n):
+            
+            critique = response[i]['response'].strip()
+            self.logger.info(f"Output of Model [{response[i]['model']}]: {critique}")
+            new_code = self.worker(node, critique)
+
+            child_node = node.add_child(state=critique, code=new_code, parent=node, action=action, prompt=json.dumps(messages))
+            self.tree_size += 1
+            self.logger.info(f"Expanded node: Node ID {id(child_node)}")
+            
+            # Evaluation Phase
+            q_value = self.evaluate(child_node)
+            self.logger.info(f"Evaluation of node ID {id(child_node)}: Q-value = {q_value:.4f}")
+        
+        return child_node, q_value
+    
+    def expand_simple(self, node):
         # Use the action as the critique
         action = self.get_action(node)
         
@@ -190,11 +220,11 @@ class SR_MCTS_LLM:
         
         child_node = node.add_child(state=critique, code=new_code, parent=node, action=action, prompt=prompt)
         self.tree_size += 1
-        logger.info(f"Expanded node: Node ID {id(child_node)}")
+        self.logger.info(f"Expanded node: Node ID {id(child_node)}")
         
         # Evaluation Phase
         q_value = self.evaluate(child_node)
-        logger.info(f"Evaluation of node ID {id(child_node)}: Q-value = {q_value:.4f}")
+        self.logger.info(f"Evaluation of node ID {id(child_node)}: Q-value = {q_value:.4f}")
         
         return child_node, q_value
 
@@ -218,34 +248,26 @@ class SR_MCTS_LLM:
         # For simplicity, we use the action as the critique
         messages = self.build_prompt_with_feedback(node)
         messages.extend([{'role': 'user', 'content': action}])
-        logger.debug(f"\n@_@ - Messages:{messages}")
+        self.logger.debug(f"\n@_@ - Messages:{messages}")
         response = self.strong_llm.run_messages(messages)
-        logger.debug(f"\n@_@ - response:{response}")
+        self.logger.debug(f"\n@_@ - response:{response}")
+
         return response, json.dumps(messages)
     
     def worker(self, node, critique): #worker role
         # Use LLM to generate improved code based on the critique
         new_code = self.coder(critique)
         node.code = new_code
-        logger.debug(f"\n@_@ - New Code:{new_code}")
+        self.logger.debug(f"\n@_@ - New Code:{new_code}")
         return new_code
 
     def coder(self, critique): #implement the code; fixed context length simple response
-        """Processes assistant output to extract and verify the source code."""
-        messages = [{'role': 'user', 
-                     'content': EXTRACT_CODE_PROMPT.format(
-                                output=critique,
-                                selected_language=SELECT_LANGUAGE)
-                     }]
-        out = self.fast_llm.run_messages(messages=messages)
-        
-        code = extract_text(out, '<source_code>')
-        code = maybe_remove_backticks(code)
+        code = _coder(critique, self.problem, SELECT_LANGUAGE, self.fast_llm)
         return code
 
     def build_prompt_with_feedback(self, node):
         """Construct the prompt including previous solutions and their evaluations."""
-        prompt = f"""Provide TRULY correct and NO-TIMEOUT solution in {SELECT_LANGUAGE}. Problem: {self.problem.problem_description}"""
+        prompt = f"""Provide TRULY correct and NO-TIMEOUT solution in {SELECT_LANGUAGE}."""
         current_node = node
         conversation_history = []
         while current_node.parent is not None:
@@ -261,17 +283,17 @@ class SR_MCTS_LLM:
             })
             current_node = current_node.parent
         conversation_history = conversation_history[::-1]
-        messages = [{'role': 'user', 'content': prompt}]
-        messages.extend(conversation_history)
-        return messages
+        #messages = [{'role': 'user', 'content': prompt}]
+        #messages.extend(conversation_history)
+        return conversation_history
     
     def summarize_state(self, evaluation_text):
         """Summarize the evaluation text to reduce length."""
-        max_length = 200
-        if len(evaluation_text) > max_length:
-            return evaluation_text[:max_length] + '...'+ evaluation_text[-max_length:] 
-        else:
-            return evaluation_text
+        #max_length = 200
+        #if len(evaluation_text) > max_length:
+        #    return evaluation_text[:max_length] + '...'+ evaluation_text[-max_length:] 
+        #else:
+        return evaluation_text
  
     def heuristic_score(self, uniqueness_score, correct, full_status):
         if full_status=='timeout':
@@ -299,13 +321,13 @@ class SR_MCTS_LLM:
         
         s = Solution(new_code, self.problem, self.model_name, "mcts", lang=SELECT_LANGUAGE) #py, cpp
 
-        testreport, fullreport = s.eval(logger)
+        testreport, fullreport = s.eval(self.logger)
         if testreport.status == "passed" and fullreport.status == "complete":
             node.terminal = True
 
         node.evaluation = f"{self.problem.problem_name}:\n - Sample test: {testreport.message}\n - Full test: {fullreport.as_xml}"
         node.uniqueness_score = uniqueness_score
-        logger.info(f"\n@_@ - Node: {node.evaluation}")
+        self.logger.info(f"\n@_@ - Node: {node.evaluation}")
         
         qg = self.heuristic_score(uniqueness_score, testreport.success_rate_number, fullreport.status)  # Score based on success rate for failed cases        
         ql = self.local_value(node) 
@@ -357,10 +379,10 @@ class SR_MCTS_LLM:
                 best_node = current_node
             nodes_to_visit.extend(current_node.children)
         if best_node:
-            logger.info(f"Best solution found with Q-value {best_node.Q:.4f}")
+            self.logger.info(f"Best solution found with Q-value {best_node.Q:.4f}")
             return best_node.state
         else:
-            logger.info("No valid solution found.")
+            self.logger.info("No valid solution found.")
             return None
 
 def convert_xml_to_list(plans_xml):
@@ -418,7 +440,7 @@ if __name__ == '__main__':
     problem_list = []
     for problem_name in problem_names:
         problem_list.append(load_problem_v2024(problem_name, Path(problem_directory)))
-    problem = problem_list[1]
+    problem = problem_list[0]
 
     # Instantiate the SR_MCTS_LLM algorithm
     sr_mcts_llm = SR_MCTS_LLM(problem, max_nodes=30)

@@ -11,17 +11,53 @@ from lib.utils import (
 from lib.llms import LLM
 from solution import Solution, SolutionManager
 from config import SELECT_LANGUAGE, EXTRACT_CODE_PROMPT, ANALYZER_PROMPT
+
+#Fenwick Trees and 
+
 simple_initial_advisor_prompt = """Solve codeforce problem. 
 - Ensure that the code includes a main function and is structured so that the program is executable when run, following the conventions of {selected_language}.
 - Do not use any external libraries; only stick to {selected_language} standard library
-Hint: Highly optimized and suited for large inputs, using advanced techniques like Fenwick Trees and binary search.
+Hint: Highly optimized and suited for large inputs, using advanced techniques like binary search.
 - Do NOT USE nested loops / iterations
 - DO NOT USE inefficient pair counting
 - DO NOT USE Brute force
 Problem: {problem}"""
 
+def _coder(out0, problem, selected_language, fast_llm=None):
+    if not fast_llm:
+        fast_llm = LLM(model_name="gpt4")
+    out0 = extract_text(out0, '<source_code>')
+    out0 = maybe_remove_backticks(out0)
+    extract_code_message = EXTRACT_CODE_PROMPT.format(
+        output=out0,
+        selected_language=selected_language, problem=problem.problem_description)
+    messages = [
+        {
+            'role': 'user',
+            'content': extract_code_message
+        }
+    ]
+    code = fast_llm.run_messages(messages=messages)
+    if '<source_code>' in code:
+        code = extract_text(code, '<source_code>')
+
+    code = maybe_remove_backticks(code)
+    return code
+
+def zero_shot(problem, strong_llm=None): #implement the code; fixed context length simple response
+    """Processes assistant output to extract and verify the source code."""
+    if not strong_llm:
+        strong_llm = LLM(model_name="gpt4")
+    prompt = simple_initial_advisor_prompt.format(problem=problem.problem_description, selected_language="cpp")
+    message = [{'role': 'user', 'content': prompt}]
+
+    out = strong_llm.run_messages(messages=message)
+    message += [{'role': 'assistant', 'content': out}]
+    code = _coder(out, problem, SELECT_LANGUAGE)
+    return code, message
+
 class Solver():
-    def __init__(self, logger = None):
+    def __init__(self, problem, logger = None):
         self.logger = logger
         if not self.logger:
             self.logger=create_logger("temp.log","temp")
@@ -29,8 +65,9 @@ class Solver():
         self.sm = SolutionManager()        
         self.strong_llm = LLM(model_name="gpt4")
         self.fast_llm = LLM(model_name="gpt4")
+        self.problem = problem
 
-    def analyzer(self,problem):
+    def analyzer(self, problem):
         prompt = ANALYZER_PROMPT.format(problem_statement=problem.problem_description)
         messages = [
             {
@@ -53,49 +90,19 @@ class Solver():
         ]
         return output
         
-    def _coder(self, out0, selected_language):
-        out0 = extract_text(out0, '<source_code>')
-        out0 = maybe_remove_backticks(out0)
-        extract_code_message = EXTRACT_CODE_PROMPT.format(
-            output=out0,
-            selected_language=selected_language)
-        messages = [
-            {
-                'role': 'user',
-                'content': extract_code_message
-            }
-        ]
-        code = self.fast_llm.run_messages(messages=messages)
-        if '<source_code>' in code:
-            code = extract_text(code, '<source_code>')
-
-        code = maybe_remove_backticks(code)
-        return code
-    
     def _reflector(self,feedback):
         self.memory += [{'role': 'user', 'content': feedback}]
         out = self.strong_llm.run_messages(messages=self.memory)
-        code = self._coder(out, SELECT_LANGUAGE)
+        code = _coder(out, problem, SELECT_LANGUAGE)
         self.memory += [{'role': 'assistant', 'content':code}]
-        return code
-
-    def zero_shot(self, problem): #implement the code; fixed context length simple response
-        """Processes assistant output to extract and verify the source code."""
-        prompt = simple_initial_advisor_prompt.format(problem=problem.problem_description, selected_language="cpp")
-        self.memory += [{'role': 'user', 'content': prompt}]
-        out = self.strong_llm.run_messages(messages=self.memory)
-        code = self._coder(out, SELECT_LANGUAGE)
-        self.memory += [{'role': 'assistant', 'content':code}]
-        s = Solution(code, problem, self.strong_llm.model_name, "zeroshot", lang=SELECT_LANGUAGE) #py, cpp
-        self.sm.add_solution(s)
-        s.eval(logger=self.logger)
         return code
     
-    def self_reflection(self,problem,n=3):
+    def self_reflection(self, problem, n=3):
         for i in range(n):
             print(self.memory)
             if i == 0:
-                code = self.zero_shot(problem)
+                code, message = zero_shot(problem, self.strong_llm)
+                self.memory += message
                 s = Solution(code, problem, self.strong_llm.model_name, "zeroshot", lang=SELECT_LANGUAGE) #py, cpp
                 testreport, fullreport = s.eval(logger=self.logger)
                 self.sm.add_solution(s)
@@ -117,15 +124,23 @@ if __name__ == '__main__':
     problem_list = []
     for problem_name in problem_names:
         problem_list.append(load_problem_v2024(problem_name, Path(problem_directory)))
-    problem = problem_list[1]
+    problem = problem_list[0]
     print(problem.problem_name)
 
-    solver = Solver(problem)
-    code = solver.zero_shot(problem)
-    code1 = solver.self_reflection(problem,n=2)
-    #code = Path("generated//Bunny_Hopscotch_1730085454_score.cpp").read_text()
-    #code = Path("/Users/dako22/Downloads/bunny_hopscotch__molamola_source_code.txt").read_text() + '\n'
-    solver.sm.to_submit("to_submit/")
+    #solver = Solver(problem)
+    #code = zero_shot(problem, solver.strong_llm)
+    #code1 = solver.self_reflection(problem, n=5)
+    ##code = Path("generated//Bunny_Hopscotch_1730085454_score.cpp").read_text()
+    ##code = Path("/Users/dako22/Downloads/bunny_hopscotch__molamola_source_code.txt").read_text() + '\n'
+    #solver.sm.to_submit("to_submit/")
 
-
+    from mcts import SR_MCTS_LLM
+    # Instantiate the SR_MCTS_LLM algorithm
+    solver2 = SR_MCTS_LLM(problem, max_nodes=10)
+    # Perform the search
+    best_solution = solver2.search()
+    # Output the best solution found
+    print("\nBest Solution Found:")
+    print(best_solution)
+    print(solver2.sm.solution_manager)
     

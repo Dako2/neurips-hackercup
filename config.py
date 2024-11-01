@@ -17,6 +17,8 @@ EXTRACT_CODE_PROMPT = """Extract the code from the response and update it as nec
 
 Current response containing code:
 {output}
+The original problem statement:
+{problem}
 """
 
 ANALYZER_PROMPT = """{problem_statement} ##Output: What's the range of main variable n in this problem? What's the level of time complexity the code should hit for? Provide the Minimum time complexity for this problem according to the reference.\n """

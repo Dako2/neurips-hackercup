@@ -27,9 +27,19 @@ ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
 if not ANTHROPIC_API_KEY:
     raise RuntimeError("Anthropic API key not found in environment variables.")
 
-async def fetch_gemini_response(messages, temperature, max_tokens):
+anthro_client = Anthropic(api_key=ANTHROPIC_API_KEY)
+client = AsyncOpenAI()
+
+async def fetch_gemini_response_n(messages, n):
     """Call the Gemini model."""
-    gemini_model = genai.GenerativeModel("gemini-1.5-pro")
+    gemini_model = genai.GenerativeModel(model_name="gemini-1.5-pro",generation_config=genai.types.GenerationConfig(candidate_count=n))
+
+    response = gemini_model.generate_content(transform_to_gemini(messages),)
+    return response
+
+async def fetch_gemini_response(messages):
+    """Call the Gemini model."""
+    gemini_model = genai.GenerativeModel(model_name="gemini-1.5-pro")
 
     response = gemini_model.generate_content(transform_to_gemini(messages),)
     if response:
@@ -38,42 +48,44 @@ async def fetch_gemini_response(messages, temperature, max_tokens):
         response = "No response received from Gemini."
     return response
 
-async def fetch_o1_response(messages, max_tokens):
+async def fetch_o1_response(model_name, messages):
     client = AsyncOpenAI()
     response = await client.chat.completions.create(
-                model="o1-mini",
+                model=model_name,
                 messages=messages,
             )
-    return response.choices[0].message.content
+    return [response.choices[0].message.content]
 
-async def fetch_openai_response(messages, temperature, max_tokens):
-    client = AsyncOpenAI()
-    response = await client.chat.completions.create(
-                model="gpt-4",
-                messages=messages,
-                temperature=temperature,
-                tool_choice=None
-            )
-    return response.choices[0].message.content
+async def fetch_openai_response_n(model_name, messages, temperature, n, seed):
+    if seed:
+        response = await client.chat.completions.create(
+                    model=model_name,
+                    messages=messages,
+                    temperature=temperature,
+                    tool_choice=None,
+                    n=n,
+                    seed=seed,
+                    #response_format={ "type": "json_object" },
+                )
+    else:
+        response = await client.chat.completions.create(
+            model=model_name,
+            messages=messages,
+            temperature=temperature,
+            tool_choice=None,
+            n=n,
+            #response_format={ "type": "json_object" },
+        )
+    output = [response.choices[i].message.content for i in range(n)]
+    return output
 
-async def fetch_gpt3_response(messages, temperature, max_tokens):
-    client = AsyncOpenAI()
-    response = await client.chat.completions.create(
-                model="gpt-3.5-turbo",
-                messages=messages,
-                temperature=temperature,
-                tool_choice=None
-            )
-    return response.choices[0].message.content
-
-async def fetch_anthropic_response(messages, temperature, max_tokens):
-    anthro_client = Anthropic(api_key=ANTHROPIC_API_KEY)
+async def fetch_anthropic_response(messages, temperature):
     """Call the Anthropic (Claude) model."""
     if not anthro_client:
         raise RuntimeError("Anthropic client is not initialized.")
     
     message = anthro_client.messages.create(
-        model="claude-3-opus-20240229",
+        model="claude-3-5-sonnet-20241022",
         temperature=temperature,  # Added temperature parameter
         messages=messages,
         max_tokens=4096,
@@ -81,41 +93,30 @@ async def fetch_anthropic_response(messages, temperature, max_tokens):
     response = message.content
     return response[0].text
 
-async def generate_response(model: str, messages, temperature: Optional[float], max_tokens: int) -> dict:
+async def generate_response_n(model: str, messages, temperature: Optional[float], n: int, seed=None) -> dict:
     if model.lower() in ['gpt4']:
-        return await fetch_openai_response(messages, temperature, max_tokens)
+        return await fetch_openai_response_n("gpt-4", messages, temperature, n, seed)
     elif model.lower() in ['gpt3.5']:
-        return await fetch_gpt3_response(messages, temperature, max_tokens)
+        return await fetch_openai_response_n("gpt-3.5-turbo", messages, temperature, n, seed)
     elif model.lower() in ['anthropic', 'claude']:
-        return await fetch_anthropic_response(messages, temperature, max_tokens)
+        return await fetch_anthropic_response(messages, temperature)
     elif model.lower() in ['o1']:
-        return await fetch_o1_response(messages, max_tokens)
+        return await fetch_o1_response('o1-mini', messages)
     elif model.lower() in ['gemini']:
-        return await fetch_gemini_response(messages, temperature, max_tokens)
-    else:
-        raise ValueError(f"Unsupported model: {model}")
+        return await fetch_gemini_response_n(messages, n)
 
 async def mcts_openai_messages_v2_async(messages, temperature, model_list, n):
-    #if n = 1, select the first one out of model_list and generate answer
-    #if n = 2, random select 2 out of model_list and generate answers
-    #if n = 5, random select 5 out of model_list and generate answers
-    #asyncio return the two responses in the list
-    selected_models = random.sample(model_list, n)
-
-    # Define max_tokens or make it a parameter
-    max_tokens = 1024
-
     # Create coroutines for each selected model
     tasks = [
-        generate_response(model, messages, temperature, max_tokens)
-        for model in selected_models
+        generate_response_n(model, messages, temperature, n)
+        for model in model_list
     ]
         # Execute all tasks concurrently
     responses = await asyncio.gather(*tasks, return_exceptions=True)
 
     # Handle exceptions and collect successful responses
     final_responses = []
-    for model, resp in zip(selected_models, responses):
+    for model, resp in zip(model_list, responses):
         if isinstance(resp, Exception):
             # Handle or log the exception as needed
             print(f"Error with model {model}: {resp}")
@@ -445,72 +446,29 @@ def call_llama(prompt, model="llama3.1", seed=None, url="http://localhost:11434/
         raise ImportError
     #logger.info(f"LLM Response: {response_data}")
     return response_data.strip()
+ 
+# Define the main function
+import time 
+async def main():
+    # Define the parameters
+    start_timer = time.time()
+    messages = [{"role": "user", "content": "List 20 difficult algorithm names used in competitive coding in the json format: {'algorithms':[...]}"}]
+    temperature = 1
+    n = 2  # Number of completions you want to fetch
 
-# Example usage
+    # Call the fetch_openai_response_n function and await its result
+    model_name = 'o1'
+    seed = None #random.randint(0,1000)
+    responses = await generate_response_n(model_name, messages, temperature, n, seed)
+
+    print(f"time {model_name}: {time.time()-start_timer}")
+    # Create a set to store unique algorithm names
+    algorithm_names = set()
+    # Write the set to a file
+    with open("algorithm_names1.txt", "a") as file:
+        for name in responses:
+            file.write(f"{name}\n")
+
+# Run the main function using asyncio
 if __name__ == "__main__":
-    #- Key constraints and unique conditions
-    
-    summarizer_prompt="""Please provide a concise summary (within 60 words) that captures:
-    **Output**: Use the following xml output format - 
-    - The provided solution types (e.g., graph traversal, dynamic programming); 
-    - The main challenges of solving the problem;
-    - The key coding/implementation ideas;
-    - Provide rationale for the solution;
-    - A list of tags or keywords for search;
-
-    ##Problem Statement:
-    {problem_statement}
-
-    ##Code_solution:
-    {code}
-
-    ##Solution Guidelines:
-    {solution_guidelines}
-    
-    **Output**
-    """
-
-    #response = llm.run(prompt)    
-    messages=[
-        {
-            "role": "user",
-            "content": "hi!!",
-        }
-    ]
-    
-    res = mcts_openai_messages_v2(messages, temperature=1, model_list = ['gemini','gpt4','anthropic'], n = 2)
-
-    """
-    from utils import load_problem_from_folder, list_problem_names, load_problem_training
-    from pathlib import Path
-    
-    problem_directory = "/mnt/d/AIHackercup/dataset/2023/round2"
-    problem_names = list_problem_names(problem_directory, "2023")
-
-    for problem_name in problem_names[:1]:
-        problem = load_problem_training(problem_name, Path(problem_directory))
-        code = problem.best_code
-        solution_guidelines = problem.solution
-        
-        problem_statement = problem.problem_description
-        code = problem.best_code
-        solution_guidelines = problem.solution
-        
-        for model in ["gpt4",]:
-            llm = LLM(model_name=model)
-            #response = llm.run(prompt)    
-            messages=[
-                {
-                    "role": "user",
-                    "content": summarizer_prompt.format(
-                        problem_statement = problem_statement,
-                        code = code,
-                        solution_guidelines = solution_guidelines,
-                    ),
-                }
-            ]
-            response = llm.mcts_openai_messages_v2(messages, n=1)
-            print(f"##{model}:",response.choices[0].message.content.strip())
-            print(f"##{model}:",response.choices[1].message.content.strip())
-            #print(type(transform_to_gemini(messages)))
-    """
+    asyncio.run(main())
