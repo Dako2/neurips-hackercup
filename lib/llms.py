@@ -14,6 +14,7 @@ from llama_index.llms.ollama import Ollama
 import json
 import urllib
 import urllib.request
+import logging
 
 # Load environment variables from .env file
 load_dotenv()
@@ -30,23 +31,26 @@ if not ANTHROPIC_API_KEY:
 anthro_client = Anthropic(api_key=ANTHROPIC_API_KEY)
 client = AsyncOpenAI()
 
-async def fetch_gemini_response_n(messages, n):
-    """Call the Gemini model."""
-    gemini_model = genai.GenerativeModel(model_name="gemini-1.5-pro",generation_config=genai.types.GenerationConfig(candidate_count=n))
+async def fetch_gemini_response_n(model_name, messages, n):
+    """Call the Gemini model."""    
+    gemini_model = genai.GenerativeModel(model_name,generation_config=genai.types.GenerationConfig(candidate_count=n))
 
-    response = gemini_model.generate_content(transform_to_gemini(messages),)
-    return response
+    responses = gemini_model.generate_content(transform_to_gemini(messages),)
+    output = []
+    for i in range(n):
+        output.append(responses._result.candidates[i].content.parts[0].text)
+    return output
 
-async def fetch_gemini_response(messages):
+async def fetch_gemini_response(model_name, messages):
     """Call the Gemini model."""
-    gemini_model = genai.GenerativeModel(model_name="gemini-1.5-pro")
+    gemini_model = genai.GenerativeModel(model_name=model_name)
 
     response = gemini_model.generate_content(transform_to_gemini(messages),)
     if response:
         response = response.text
     else:
-        response = "No response received from Gemini."
-    return response
+        response = ""
+    return [response]
 
 async def fetch_o1_response(model_name, messages):
     client = AsyncOpenAI()
@@ -91,57 +95,7 @@ async def fetch_anthropic_response(messages, temperature):
         max_tokens=4096,
     )
     response = message.content
-    return response[0].text
-
-async def generate_response_n(model: str, messages, temperature: Optional[float], n: int, seed=None) -> dict:
-    if model.lower() in ['gpt4']:
-        return await fetch_openai_response_n("gpt-4", messages, temperature, n, seed)
-    elif model.lower() in ['gpt3.5']:
-        return await fetch_openai_response_n("gpt-3.5-turbo", messages, temperature, n, seed)
-    elif model.lower() in ['anthropic', 'claude']:
-        return await fetch_anthropic_response(messages, temperature)
-    elif model.lower() in ['o1']:
-        return await fetch_o1_response('o1-mini', messages)
-    elif model.lower() in ['gemini']:
-        return await fetch_gemini_response_n(messages, n)
-
-async def mcts_openai_messages_v2_async(messages, temperature, model_list, n):
-    # Create coroutines for each selected model
-    tasks = [
-        generate_response_n(model, messages, temperature, n)
-        for model in model_list
-    ]
-        # Execute all tasks concurrently
-    responses = await asyncio.gather(*tasks, return_exceptions=True)
-
-    # Handle exceptions and collect successful responses
-    final_responses = []
-    for model, resp in zip(model_list, responses):
-        if isinstance(resp, Exception):
-            # Handle or log the exception as needed
-            print(f"Error with model {model}: {resp}")
-            final_responses.append({'model': model, 'error': str(resp)})
-        else:
-            final_responses.append({'model': model, 'response': resp})
-
-    return final_responses
-
-def mcts_openai_messages_v2(
-    messages: List[Dict[str, str]],
-    temperature: float = 1.0,
-    model_list: List[str] = ['gpt4', 'anthropic','gemini'],
-    n: int = 2
-) -> List[Dict[str, Any]]:
-    """
-    Synchronous wrapper for the asynchronous mcts_openai_messages_v2_async function.
-
-    :param messages: The conversation or prompts to send to the models.
-    :param temperature: Controls the randomness of the model's output.
-    :param model_list: List of available models to choose from.
-    :param n: Number of models to select and generate responses from.
-    :return: List of responses from the selected models.
-    """
-    return asyncio.run(mcts_openai_messages_v2_async(messages, temperature, model_list, n))
+    return [response[0].text]
 
 
 def transform_to_gemini(messages_chatgpt):
@@ -187,7 +141,6 @@ class LLM:
 
         else:
             raise ValueError(f"Model '{self.model_name}' is not supported.")
-
 
     def initialize_ollama(self, model_name="llama3.1"):
         # Prepare the messages for the model
@@ -447,9 +400,59 @@ def call_llama(prompt, model="llama3.1", seed=None, url="http://localhost:11434/
     #logger.info(f"LLM Response: {response_data}")
     return response_data.strip()
  
-# Define the main function
-import time 
-async def main():
+async def generate_response_n_async(model: str, messages, temperature: Optional[float], n: int, seed=None) -> dict:
+    if model.lower() in ['gpt4']:
+        return await fetch_openai_response_n("gpt-4", messages, temperature, n, seed)
+    elif model.lower() in ['gpt3.5']:
+        return await fetch_openai_response_n("gpt-3.5-turbo", messages, temperature, n, seed)
+    elif model.lower() in ['anthropic', 'claude']:
+        return await fetch_anthropic_response(messages, temperature)
+    elif model.lower() in ['o1']:
+        return await fetch_o1_response('o1-mini', messages)
+    elif model.lower() in ['gemini-pro']:
+        return await fetch_gemini_response_n("gemini-1.5-pro",messages, n)
+    elif model.lower() in ['gemini']:
+        return await fetch_gemini_response("gemini-1.5-flash",messages)
+
+def generate_response_n(model: str, messages, temperature: Optional[float], n: int, seed=None) -> dict:
+    """
+    Synchronous wrapper for the asynchronous function.
+    """
+    return asyncio.run(generate_response_n_async(model, messages, temperature, n, seed))
+         
+            
+async def mcts_multiple_models_n_tasks_async(messages, temperature, model_list, n, seed):
+    # Create coroutines for each selected model
+    tasks = [
+        generate_response_n_async(model, messages, temperature, n, seed)
+        for model in model_list
+    ]
+    # Execute all tasks concurrently
+    responses = await asyncio.gather(*tasks, return_exceptions=True)
+    # Handle exceptions and collect successful responses
+    final_responses = []
+    for model, resp in zip(model_list, responses):
+        if isinstance(resp, Exception):
+            # Handle or log the exception as needed
+            raise ValueError(f"Error with model {model}: {resp}")
+        else:
+            for x in resp:
+                final_responses.append({'model': model, 'response': x})
+    return final_responses
+ 
+def mcts_multiple_models_n_tasks(messages, temperature, model_list, n, seed):
+    """
+    Synchronous wrapper for the asynchronous function.
+    """
+    return asyncio.run(mcts_multiple_models_n_tasks_async(messages, temperature, model_list, n, seed))
+
+
+# Run the main function using asyncio
+if __name__ == "__main__":
+
+    # Define the main function
+    import time 
+
     # Define the parameters
     start_timer = time.time()
     messages = [{"role": "user", "content": "List 20 difficult algorithm names used in competitive coding in the json format: {'algorithms':[...]}"}]
@@ -457,18 +460,17 @@ async def main():
     n = 2  # Number of completions you want to fetch
 
     # Call the fetch_openai_response_n function and await its result
-    model_name = 'o1'
-    seed = None #random.randint(0,1000)
-    responses = await generate_response_n(model_name, messages, temperature, n, seed)
+    
+    seed = random.randint(0,1000)
+    #responses = mcts_multiple_models_n_tasks(messages, temperature, ['gpt4','o1'], 1, seed)
+    
+    responses = generate_response_n('gpt4', messages, temperature, n, seed)
 
-    print(f"time {model_name}: {time.time()-start_timer}")
+    print(f"time: {time.time()-start_timer} - {responses}")
     # Create a set to store unique algorithm names
     algorithm_names = set()
     # Write the set to a file
-    with open("algorithm_names1.txt", "a") as file:
-        for name in responses:
-            file.write(f"{name}\n")
-
-# Run the main function using asyncio
-if __name__ == "__main__":
-    asyncio.run(main())
+    with open("algorithm_names_full.txt", "a") as file:
+        for item in responses:
+            file.write(f"{item}\n")
+ 

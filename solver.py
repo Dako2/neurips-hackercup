@@ -10,7 +10,7 @@ from lib.utils import (
     save_to_disk,)
 from lib.llms import LLM
 from solution import Solution, SolutionManager
-from config import SELECT_LANGUAGE, EXTRACT_CODE_PROMPT, ANALYZER_PROMPT
+from config import SELECT_LANGUAGE, EXTRACT_CODE_PROMPT, ANALYZER_PROMPT, TIME_COMPLEXITY_ANALYZER_PROMPT
 
 #Fenwick Trees and 
 
@@ -43,6 +43,16 @@ def _coder(out0, problem, selected_language, fast_llm=None):
 
     code = maybe_remove_backticks(code)
     return code
+
+
+def time_complexity_analyzer(problem):
+    
+    strong_llm = LLM(model_name="gpt4")
+    prompt = TIME_COMPLEXITY_ANALYZER_PROMPT.format(problem_statement=problem.problem_description)
+    message = [{'role': 'user', 'content': prompt}]
+    out = strong_llm.run_messages(messages=message)
+    
+    return out
 
 def zero_shot(problem, strong_llm=None): #implement the code; fixed context length simple response
     """Processes assistant output to extract and verify the source code."""

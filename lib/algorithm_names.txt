@@ -1,666 +1,245 @@
-1. Linear Regression
-2. Gradient Descent
-3. Random Forest
-4. K-means
-5. Neural Network
-6. Support Vector Machine
-7. Apriori
-8. Floyd-Warshall
-9. Bellman-Ford
-10. Prim's algorithm
-1. Dijkstra's algorithm
-2. Quick Sort
-3. Breadth First Search (BFS)
-4. Depth First Search (DFS)
-5. A* search algorithm
-6. Prim's algorithm
-7. Kruskal's algorithm
-8. Bellman-Ford algorithm
-9. Floyd-Warshall algorithm
-10. Knuth-Morris-Pratt algorithm
-1. Depth-First Search (DFS)
-2. Breadth-First Search (BFS)
-3. Dijkstra's Algorithm
-4. Bellman-Ford Algorithm
-5. Floyd-Warshall Algorithm
-6. A* Search
-7. Prim's Algorithm
-8. Kruskal's Algorithm
-9. Greedy Algorithm
-10. Genetic Algorithm
-1. QuickSort
-2. MergeSort
-3. BubbleSort
-4. SelectionSort
-5. Binary Search
-6. Bellman-Ford
-7. Dijkstra's
-8. Prim's
-9. Kruskal's
-10. Topological Sort
-11. Floyd-Warshall
-12. A* Algorithm
-13. LRU Cache Replacement
-14. Apriori Algorithm
-15. KMeans Clustering
-16. Depth First Search
-17. Breadth First Search
-18. Genetic Algorithm
-19. Traveling Salesman Problem algorithms
-20. Branch and bound.
-1. The QuickSort algorithm
-2. The MergeSort algorithm
-3. The Dijkstra's algorithm
-4. The A* algorithm
-5. The Breadth-First Search algorithm
-6. The Depth-First Search algorithm
-7. The Knuth-Morris-Pratt algorithm
-8. The Bellman-Ford algorithm
-9. The Floyd-Warshall algorithm
-10. The Prim's algorithm
-1. Bubble sort
-2. QuickSort
-3. Merge sort
-4. Binary search
-5. Dijkstra's algorithm
-6. Kruskal's algorithm
-7. Prim's algorithm
-8. Bellman-Ford algorithm
-9. A* algorithm
-10. Floyd-Warshall algorithm
-1. Bubble Sort
-2. Quick Sort
-3. Merge Sort
-4. Dijkstra's algorithm
-5. Floyd-Warshall algorithm
-6. A* Search algorithm
-7. Breadth First Search (BFS)
-8. Depth First Search (DFS)
-9. Prim's algorithm
-10. Kruskal's algorithm
-1. Bubble Sort
-2. Quicksort
-3. Merge sort
-4. Dijkstra's algorithm
-5. A* search algorithm
-6. Depth-first search
-7. Breadth-first search
-8. Prim's algorithm
-9. Kruskal's algorithm
-10. Floyd-Warshall algorithm
-1. Bubble sort
-2. Quick sort
-3. Merge sort
-4. Selection sort
-5. Insertion sort
-6. Dijkstra's algorithm
-7. A* algorithm
-8. Kruskal's Algorithm
-9. Prim's Algorithm
-10. Genetic algorithm
-1. Dijkstra's algorithm
-2. A* search algorithm
-3. Selection sort
-4. Bubble sort
-5. Merge sort
-6. Quick sort
-7. Breadth-first search (BFS)
-8. Depth-first search (DFS)
-9. Kruskal's algorithm
-10. Prim's algorithm
-1. QuickSort
-2. MergeSort
-3. Binary Search
-4. Prim's Algorithm
-5. Dijkstra's Algorithm
-6. Kruskal's Algorithm
-7. Breadth First Search (BFS)
-8. Depth First Search (DFS)
-9. Bellman-Ford Algorithm
-10. Floyd-Warshall Algorithm
-1. Bubble sort
-2. Quick sort
-3. Merge sort
-4. Dijkstra's algorithm
-5. A star algorithm
-6. Genetic algorithm
-7. PageRank algorithm
-8. Apriori algorithm
-9. Longest common subsequence algorithm
-10. Binary search algorithm
-1. Bubble Sort
-2. Quick Sort
-3. Merge Sort
-4. Radix Sort
-5. Binary Search
-6. Dijkstra's Algorithm
-7. Bellman-Ford Algorithm
-8. Floyd-Warshall Algorithm
-9. A* Search Algorithm
-10. Knuth-Morris-Pratt Algorithm
-1. AdaBoost
-2. K-Means
-3. Random Forest
-4. Gradient Descent 
-5. Support Vector Machine (SVM)
-6. Naive Bayes
-7. Decision Tree 
-8. Convolutional Neural Network (CNN)
-9. K-Nearest Neighbors (KNN)
-10. Genetic Algorithms
-1. Bubble Sort
-2. Quick Sort
-3. Merge Sort
-4. Insertion Sort
-5. Selection Sort
-6. Breadth-First Search (BFS)
-7. Depth-First Search (DFS)
-8. Dijkstra's Algorithm
-9. A* Algorithm
-10. Knuth-Morris-Pratt Algorithm
-11. Bellman-Ford Algorithm
-12. Fisher-Yates Shuffle Algorithm
-13. RSA Algorithm
-14. Prim's Algorithm
-15. Kruskal's Algorithm
-1. QuickSort
-2. Dijkstra's algorithm
-3. Breadth-first search
-4. Depth-first search
-5. MergeSort
-6. Kruskal's algorithm
-7. Prim's algorithm
-8. Floyd-Warshall algorithm
-9. Bellman-Ford algorithm
-10. A* search algorithm
-1. Dijkstra's algorithm
-2. A* algorithm
-3. Breadth-first search (BFS)
-4. Depth-first search (DFS)
-5. Bellman-Ford algorithm
-6. Floyd-Warshall algorithm
-7. Kruskal's algorithm
-8. Prim's algorithm
-9. Genetic algorithm
-10. Travelling Salesman Problem (TSP) algorithm
-1. A* (pronounced "A star")
-2. Dijkstra's algorithm
-3. Prim's algorithm
-4. Kruskal's algorithm
-5. Bellman-Ford algorithm
-6. Floyd-Warshall algorithm
-7. K-NN (k-nearest neighbors) algorithm
-8. Apriori algorithm
-9. Genetic algorithm
-10. Support Vector Machine (SVM) algorithm
-1. Quick Sort
-2. Merge Sort
-3. Bubble Sort
-4. Insertion Sort
-5. Selection Sort
-6. Breadth-First Search (BFS)
-7. Depth-First Search (DFS)
-8. Dijkstra's Algorithm
-9. Bellman-Ford Algorithm
-10. Floyd-Warshall Algorithm
-11. A* Algorithm
-12. Knuth-Morris-Pratt Algorithm
-13. RSA Algorithm
-14. Binary Search
-15. Heapsort
-16. Radix Sort
-17. Prim's Algorithm
-18. Kruskal's Algorithm
-19. Ford-Fulkerson Algorithm
-20. K-means clustering algorithm
-1. QuickSort
-2. MergeSort
-3. BucketSort
-4. RadixSort
-5. Breadth-First Search (BFS)
-6. Depth-First Search (DFS)
-7. Dijkstra's Algorithm
-8. Bellman-Ford Algorithm
-9. Prim's Algorithm
-10. Kruskal's Algorithm
-11. Floyd-Warshall Algorithm
-12. A* Algorithm
-13. Tabu Search
-14. Simulated Annealing
-15. Genetic Algorithm
-Sure! Here are some commonly known algorithms from various domains:
+1. **Aho-Corasick Algorithm**: Given a large text and a list of keywords, find all occurrences of these keywords within the text.
 
-### Sorting Algorithms
-1. Bubble Sort
-2. Quick Sort
-3. Merge Sort
-4. Insertion Sort
-5. Selection Sort
-6. Heap Sort
-7. Radix Sort
-8. Shell Sort
+2. **Bellman-Ford Algorithm**: Find the shortest path from a single source vertex to all other vertices in a graph that may have negative weight edges.
 
-### Search Algorithms
-1. Linear Search
-2. Binary Search
-3. Depth-First Search (DFS)
-4. Breadth-First Search (BFS)
-5. A* Search Algorithm
+3. **Borůvka's Algorithm**: Determine the minimum spanning tree of a connected, edge-weighted graph.
 
-### Graph Algorithms
-1. Dijkstra's Algorithm
-2. Prim's Algorithm
-3. Kruskal's Algorithm
-4. Floyd-Warshall Algorithm
-5. Bellman-Ford Algorithm
-6. Johnson's Algorithm
-7. Topological Sort
+4. **Dinic's Algorithm**: Calculate the maximum flow in a flow network.
 
-### Dynamic Programming Algorithms
-1. Knapsack Problem
-2. Longest Common Subsequence
-3. Fibonacci Sequence Algorithm
-4. Coin Change Problem
-5. Matrix Chain Multiplication
+5. **Edmonds-Karp Algorithm**: Compute the maximum flow in a flow network using the Ford-Fulkerson method with BFS for shortest augmenting paths.
 
-### Machine Learning Algorithms
-1. Linear Regression
-2. Logistic Regression
-3. Decision Tree
-4. Random Forest
-5. Support Vector Machines (SVM)
-6. K-Nearest Neighbors (KNN)
-7. K-Means Clustering
-8. Neural Networks
-9. Gradient Boosting
+6. **Floyd-Warshall Algorithm**: Find the shortest paths between all pairs of vertices in a given weighted graph with positive or negative edge weights (but without negative cycles).
 
-### Cryptographic Algorithms
-1. RSA Algorithm
-2. AES (Advanced Encryption Standard)
-3. DES (Data Encryption Standard)
-4. SHA-256 (Secure Hash Algorithm)
-5. Diffie-Hellman Key Exchange
+7. **Ford-Fulkerson Algorithm**: Determine the maximum flow in a flow network.
 
-### Other Algorithms
-1. Fast Fourier Transform (FFT)
-2. Monte Carlo Simulation
-3. Genetic Algorithm
-4. Simulated Annealing
-5. Travelling Salesman Problem
+8. **Gabow's Algorithm for Strongly Connected Components**: Find all strongly connected components in a directed graph.
 
-These algorithms span a variety of applications and are foundational in computer science and related fields.
-Sure, here are a few well-known algorithms across various domains:
+9. **Hopcroft-Karp Algorithm**: Find the maximum cardinality matching in a bipartite graph.
 
-1. **Sorting Algorithms**:
-   - Quick Sort
-   - Merge Sort
-   - Bubble Sort
-   - Insertion Sort
-   - Heap Sort
-   - Selection Sort
+10. **Knuth-Morris-Pratt Algorithm (KMP)**: Search for a substring (pattern) within a larger string, efficiently handling repeated characters.
 
-2. **Search Algorithms**:
-   - Binary Search
-   - Linear Search
-   - Depth-First Search (DFS)
-   - Breadth-First Search (BFS)
+11. **Kosaraju's Algorithm**: Identify all strongly connected components in a directed graph.
 
-3. **Graph Algorithms**:
-   - Dijkstra's Algorithm
-   - A* Algorithm
-   - Bellman-Ford Algorithm
-   - Floyd-Warshall Algorithm
-   - Kruskal’s Algorithm
-   - Prim’s Algorithm
+12. **Manacher's Algorithm**: Find the longest palindromic substring in a given string.
 
-4. **Machine Learning Algorithms**:
-   - Linear Regression
-   - Logistic Regression
-   - Decision Trees
-   - Random Forest
-   - K-Means Clustering
-   - Support Vector Machines (SVM)
-   - Neural Networks
+13. **Maximum Flow Algorithms**: Determine the maximum possible flow from a source to a sink in a network graph.
 
-5. **Dynamic Programming Algorithms**:
-   - Fibonacci Sequence
-   - Knapsack Problem
-   - Longest Common Subsequence
-   - Coin Change Problem
+14. **Minimum Cost Maximum Flow Algorithm**: Find the maximum flow through a flow network with the smallest possible cost.
 
-6. **Cryptographic Algorithms**:
-   - RSA Encryption
-   - AES (Advanced Encryption Standard)
-   - SHA-256 (Secure Hash Algorithm)
-   - MD5 (Message-Digest Algorithm 5)
+15. **Rabin-Karp Algorithm**: Search for a pattern in a text using hashing to find any exact matches of a substring efficiently.
 
-7. **String Algorithms**:
-   - Knuth-Morris-Pratt (KMP)
-   - Rabin-Karp Algorithm
-   - Boyer-Moore Algorithm
+16. **Stoer-Wagner Algorithm**: Compute the minimum cut of an undirected graph.
 
-8. **Other Notable Algorithms**:
-   - Huffman Coding
-   - Fast Fourier Transform (FFT)
-   - Monte Carlo Algorithm
+17. **Suffix Array Construction**: Construct a suffix array for a given string to enable efficient pattern searching.
 
-These algorithms are fundamental concepts across computer science and various application domains.
-Certainly! Here are some well-known algorithm names across various domains in computer science and data processing:
+18. **Tarjan's Algorithm for Strongly Connected Components**: Identify all strongly connected components in a directed graph.
 
-### Sorting Algorithms:
-1. QuickSort
-2. MergeSort
-3. BubbleSort
-4. InsertionSort
-5. SelectionSort
-6. HeapSort
-7. RadialSort.
+19. **Tarjan's Offline Lowest Common Ancestor Algorithm**: Process multiple queries to find the lowest common ancestor of two nodes in a tree.
 
-### Searching Algorithms:
-1. Binary Search
-2. Linear Search
-3. Depth-First Search (DFS)
-4. Breadth-First Search (BFS)
-5. Jump Search
-6. Interpolation Search
-7. Exponential Search
+20. **Z Algorithm**: Find all occurrences of a pattern in a text by calculating the Z-array.
 
-### Graph Algorithms:
-1. Dijkstra's Algorithm
-2. A* Algorithm
-3. Bellman-Ford Algorithm
-4. Floyd-Warshall Algorithm
-5. Kruskal's Algorithm
-6. Prim's Algorithm
-7. Topological Sort
+21. **Dynamic Programming with Bitmasks**: Solve optimization problems involving subsets of items, like the Traveling Salesman Problem, with bitmasks to represent subsets.
 
-### Machine Learning Algorithms:
-1. Linear Regression
-2. Logistic Regression
-3. Decision Tree
-4. Random Forest
-5. Support Vector Machine (SVM)
-6. k-Nearest Neighbors (k-NN)
-7. k-Means Clustering
+22. **Segment Tree with Lazy Propagation**: Given an array, efficiently perform range update and range query operations.
 
-### Cryptographic Algorithms:
-1. RSA
-2. AES (Advanced Encryption Standard)
-3. DES (Data Encryption Standard)
-4. SHA-256 (Secure Hash Algorithm)
-5. Blowfish
-6. Elliptic Curve Cryptography (ECC)
+23. **Fenwick Tree (Binary Indexed Tree)**: Perform update and prefix sum queries on an array efficiently.
 
-### Other Common Algorithms:
-1. Dynamic Programming (e.g., Knapsack Problem, Fibonacci Sequence)
-2. Divide and Conquer (e.g., Binary Search, Merge Sort)
-3. Backtracking (e.g., N-Queens Problem, Sudoku Solver)
-4. Branch and Bound
-5. Hashing Algorithms
-6. Genetic Algorithms
+24. **Square Root Decomposition**: Solve range query problems on an array, like range sum or range minimum.
 
-Each of these algorithms has its own use case, complexity, and advantages depending on the specific needs of the problem being solved.
-1. Bubble Sort
-2. Quick Sort
-3. Merge Sort
-4. Insertion Sort
-5. Selection Sort
-6. Heap Sort
-7. Radial Basis Function Networks
-8. A* Algorithm
-9. Dijkstra’s Algorithm
-10. Breadth-First Search (BFS)
-11. Depth-First Search (DFS)
-12. Backpropagation
-13. Gradient Descent
-14. K-Means Clustering
-15. Longest Common Subsequence
-16. Knuth-Morris-Pratt (KMP) Pattern Matching
-17. Fast Fourier Transform (FFT)
-18. PageRank
-19. Support Vector Machines
-20. Principal Component Analysis (PCA)
-Certainly! Here is a list of common algorithms:
+25. **Persistent Segment Tree**: Maintain versions of a segment tree efficiently to handle range updates and queries over previous versions of an array.
 
-1. Binary Search
-2. Merge Sort
-3. Quick Sort
-4. Dijkstra's Algorithm
-5. Floyd-Warshall Algorithm
-6. A* Search Algorithm
-7. K-Nearest Neighbors (KNN)
-8. Genetic Algorithm
-9. Breadth-First Search (BFS)
-10. Depth-First Search (DFS)
-11. Bellman-Ford Algorithm
-12. Prim's Algorithm
-13. Kruskal's Algorithm
-14. Naive Bayes
-15. Decision Tree
-16. Random Forest
-17. K-Means Clustering
-18. Support Vector Machine (SVM)
-19. PageRank
-20. Hill Climbing
-21. Gradient Descent
-22. Apriori Algorithm
-23. FP-Growth Algorithm
-24. Neural Networks
-25. Long Short-Term Memory (LSTM)
-26. Convolutional Neural Networks (CNNs)
-27. Backpropagation Algorithm
-28. Minimax Algorithm
-29. Expectation-Maximization Algorithm
-30. Ant Colony Optimization
+26. **Link-Cut Tree**: Dynamically maintain and query information in a forest of trees.
 
-Let me know if you need any further information on any of these algorithms!
-1. Quicksort
-2. Merge Sort
-3. Bubble Sort
-4. Insertion Sort
-5. Selection Sort
-6. Heap Sort
-7. Radix Sort
-8. Shell Sort
-9. Dijkstra's Algorithm
-10. A* (A-Star) Algorithm
-11. Breadth-First Search (BFS)
-12. Depth-First Search (DFS)
-13. Floyd-Warshall Algorithm
-14. Prim's Algorithm
-15. Kruskal's Algorithm
-16. Bellman-Ford Algorithm
-17. Quickselect
-18. Binary Search
-19. Hashing
-20. Backtracking Algorithm
-21. Dynamic Programming
-22. K-Means Clustering
-23. Support Vector Machine (SVM)
-24. Naive Bayes
-25. K-Nearest Neighbors (KNN)
-```xml
-<algorithm1>QuickSort</algorithm1>
-<algorithm2>MergeSort</algorithm2>
-<algorithm3>BubbleSort</algorithm3>
-<algorithm4>InsertionSort</algorithm4>
-<algorithm5>SelectionSort</algorithm5>
-<algorithm6>HeapSort</algorithm6>
-<algorithm7>RadixSort</algorithm7>
-<algorithm8>BucketSort</algorithm8>
-<algorithm9>ShellSort</algorithm9>
-<algorithm10>CountingSort</algorithm10>
-<algorithm11>DepthFirstSearch</algorithm11>
-<algorithm12>BreadthFirstSearch</algorithm12>
-<algorithm13>Dijkstra</algorithm13>
-<algorithm14>A*</algorithm14>
-<algorithm15>Knuth-Morris-Pratt</algorithm15>
-<algorithm16>Rabin-Karp</algorithm16>
-<algorithm17>HuffmanCoding</algorithm17>
-<algorithm18>Prim'sAlgorithm</algorithm18>
-<algorithm19>Kruskal'sAlgorithm</algorithm19>
-<algorithm20>Ford-Fulkerson</algorithm20>
-```
-```xml
-<algorithm1>Bubble Sort</algorithm1>
-<algorithm2>Quick Sort</algorithm2>
-<algorithm3>Merge Sort</algorithm3>
-<algorithm4>Insertion Sort</algorithm4>
-<algorithm5>Selection Sort</algorithm5>
-<algorithm6>Heap Sort</algorithm6>
-<algorithm7>Binary Search</algorithm7>
-<algorithm8>Breadth-First Search (BFS)</algorithm8>
-<algorithm9>Depth-First Search (DFS)</algorithm9>
-<algorithm10>Dijkstra's Algorithm</algorithm10>
-<algorithm11>A* Search</algorithm11>
-<algorithm12>Kruskal's Algorithm</algorithm12>
-<algorithm13>Prim's Algorithm</algorithm13>
-<algorithm14>Bellman-Ford Algorithm</algorithm14>
-<algorithm15>Floyd-Warshall Algorithm</algorithm15>
-<algorithm16>Euclidean Algorithm</algorithm16>
-<algorithm17>KMP Algorithm</algorithm17>
-<algorithm18>Boyer-Moore Algorithm</algorithm18>
-<algorithm19>Rabin-Karp Algorithm</algorithm19>
-<algorithm20>Ford-Fulkerson Method</algorithm20>
-```
-Certainly! Here is an example list of algorithm names formatted in XML style:
+27. **Heavy-Light Decomposition**: Decompose a tree into heavy and light paths to enable efficient queries and updates along paths.
 
-```xml
-<algorithm1>QuickSort</algorithm1>
-<algorithm2>MergeSort</algorithm2>
-<algorithm3>BubbleSort</algorithm3>
-<algorithm4>BinarySearch</algorithm4>
-<algorithm5>Dijkstra's</algorithm5>
-<algorithm6>A*</algorithm6>
-<algorithm7>NeuralNetwork</algorithm7>
-<algorithm8>DecisionTree</algorithm8>
-<algorithm9>GeneticAlgorithm</algorithm9>
-<algorithm10>GradientDescent</algorithm10>
-```
+28. **Convex Hull Trick**: Optimize dynamic programming solutions involving line intersection queries.
 
-Each algorithm name is enclosed within its respective XML tags, following the format you provided.
+29. **Fast Fourier Transform (FFT)**: Compute the discrete Fourier transform and its inverse efficiently for polynomial multiplication.
 
+30. **Number Theoretic Transform (NTT)**: Perform polynomial multiplication using modular arithmetic.
 
-{  
-   "algorithms":[  
-      {  
-         "name":"Bubble Sort"
-      },
-      {  
-         "name":"Quick Sort"
-      },
-      {  
-         "name":"Merge Sort"
-      },
-      {  
-         "name":"Insertion Sort"
-      },
-      {  
-         "name":"Selection Sort"
-      },
-      {  
-         "name":"Heap Sort"
-      },
-      {  
-         "name":"Binary Search"
-      },
-      {  
-         "name":"Linear Search"
-      },
-      {  
-         "name":"Breadth-First Search (BFS)"
-      },
-      {  
-         "name":"Depth-First Search (DFS)"
-      },
-      {  
-         "name":"Dijkstra's Algorithm"
-      },
-      {  
-         "name":"A* Search"
-      },
-      {  
-         "name":"Dynamic Programming"
-      },
-      {  
-         "name":"Backtracking"
-      },
-      {  
-         "name":"Kruskal's Algorithm"
-      },
-      {  
-         "name":"Prim's Algorithm"
-      },
-      {  
-         "name":"Bellman-Ford Algorithm"
-      },
-      {  
-         "name":"Floyd-Warshall Algorithm"
-      },
-      {  
-         "name":"Knuth-Morris-Pratt Algorithm"
-      },
-      {  
-         "name":"Rabin-Karp Algorithm"
-      }
-   ]
-}
-{
-  "algorithms": [
-    "Bubble Sort",
-    "Merge Sort",
-    "Quick Sort",
-    "Heap Sort",
-    "Insertion Sort",
-    "Selection Sort",
-    "Radix Sort",
-    "Counting Sort",
-    "Binary Search",
-    "Breadth-First Search",
-    "Depth-First Search",
-    "Dijkstra's Algorithm",
-    "A* Search Algorithm",
-    "Bellman-Ford Algorithm",
-    "Floyd-Warshall Algorithm",
-    "Prim's Algorithm",
-    "Kruskal's Algorithm",
-    "Union-Find Algorithm",
-    "Knuth-Morris-Pratt (KMP) Algorithm",
-    "Rabin-Karp Algorithm",
-    "Naive Bayes Classifier",
-    "Support Vector Machine",
-    "K-Means Clustering",
-    "Principal Component Analysis",
-    "Linear Regression",
-    "Logistic Regression",
-    "Gradient Descent",
-    "Backpropagation",
-    "Genetic Algorithm",
-    "Monte Carlo Method"
-  ]
-}
+31. **Kademlia Algorithm**: Implement a distributed hash table for peer-to-peer networks.
 
-{
-  "algorithms": [
-    "Bubble Sort",
-    "Merge Sort",
-    "Quick Sort",
-    "Binary Search",
-    "Linear Search",
-    "Dijkstra's Algorithm",
-    "A* Search Algorithm",
-    "Depth First Search (DFS)",
-    "Breadth First Search (BFS)",
-    "K-Means Clustering",
-    "Support Vector Machine (SVM)",
-    "Random Forest",
-    "Gradient Descent",
-    "Naive Bayes",
-    "Principal Component Analysis (PCA)",
-    "Apriori Algorithm",
-    "Kruskal's Algorithm",
-    "Prim's Algorithm",
-    "Bellman-Ford Algorithm",
-    "Floyd-Warshall Algorithm"
-  ]
-}
+32. **Dominator Tree**: Find the dominator tree of a directed graph with a given start node.
+
+33. **Voronoi Diagram**: Partition a plane with n points into convex polygons such that each polygon contains one generating point.
+
+34. **Delaunay Triangulation**: Construct a triangulation of a set of points such that no point is inside the circumcircle of any triangle.
+
+35. **Graham Scan**: Find the convex hull of a set of points in the plane.
+
+36. **Gale-Shapley Algorithm (Stable Marriage Problem)**: Determine a stable matching between two equally sized sets of elements.
+
+37. **K-d Tree**: Perform efficient range searches and nearest neighbor searches in k-dimensional space.
+
+38. **Interval Tree**: Manage intervals and perform queries such as finding all intervals overlapping a given point.
+
+39. **Network Simplex Algorithm**: Solve minimum cost flow problems in capacitated networks.
+
+40. **Quadtree**: Partition a two-dimensional space by recursively subdividing it into four quadrants or regions.
+
+41. **Treap**: Implement a randomized binary search tree.
+
+42. **Splay Tree**: Implement a self-adjusting binary search tree with amortized guaranteed access times.
+
+43. **Meet in the Middle**: Solve problems involving the combination of two independent parts, like subset sum problems.
+
+44. **Simulated Annealing**: Find an approximate solution to an optimization problem, especially when there are many local optima.
+
+45. **Euler Tour Technique**: Perform subtree queries in a tree structure by flattening the tree into an array.
+
+46. **Christofides Algorithm**: Find an approximate solution to the Traveling Salesman Problem for metric graphs.
+
+47. **Kadane's Algorithm**: Find the maximum sum subarray in a given one-dimensional numeric array.
+
+48. **Ternary Search Algorithm**: Find the maximum or minimum of a unimodal function within a specified interval.
+
+49. **Bloom Filter**: Implement a space-efficient probabilistic data structure to test whether an element is in a set.
+
+50. **Byzantine Generals Problem**: Achieve consensus in distributed computing systems that may have faulty or malicious components.
+
+51. **Critical Path Method**: Compute the longest path of activities in a project, determining the total project duration.
+
+52. **Boyer-Moore Algorithm**: Perform pattern matching by preprocessing the pattern to quickly skip sections of text.
+
+53. **Needleman-Wunsch Algorithm**: Compute the optimal sequence alignment of two sequences.
+
+54. **Pollard's rho Algorithm**: Factorize a composite number and find its non-trivial divisors.
+
+55. **Miller-Rabin Primality Test**: Determine if a number is prime with an efficient probabilistic test.
+
+56. **Monge's Theorem Algorithm**: Apply Monge's theorem in optimization problems involving dynamic programming for cost matrices.
+
+57. **Schwarz–Christoffel Mapping Algorithm**: Compute the transformation of complex polygons into simpler geometric shapes.
+
+58. **Tower of Hanoi Algorithm**: Solve the classic puzzle involving moving disks between pegs.
+
+59. **Huffman Encoding Algorithm**: Generate an optimal prefix code based on the frequency of each character.
+
+60. **Heapsort**: Implement a sorting algorithm that uses a binary heap data structure.
+
+61. **Minimum Spanning Tree**: Find a subset of edges forming a tree that connects all vertices and minimizes total edge weight.
+
+62. **Edit Distance**: Calculate the minimum number of operations required to convert one string into another.
+
+63. **Linear Regression**: Fit a linear model to a set of data points to predict outcomes.
+
+64. **Gradient Descent**: Optimize continuous and differentiable functions, particularly in machine learning.
+
+65. **Random Forest**: Build an ensemble of decision trees for classification or regression tasks.
+
+66. **K-means**: Partition data points into k clusters, minimizing variance within each cluster.
+
+67. **Neural Network**: Model complex relationships between inputs and outputs in data.
+
+68. **Support Vector Machine**: Find the hyperplane that best separates different data classes.
+
+69. **Apriori Algorithm**: Discover frequent item sets in a database of transactions for market basket analysis.
+
+70. **Prim's Algorithm**: Construct a minimum spanning tree from a graph.
+
+71. **Dijkstra's Algorithm**: Find the shortest path between nodes in a graph with non-negative edge weights.
+
+72. **Quick Sort**: Implement a sorting algorithm based on the divide-and-conquer principle.
+
+73. **Breadth First Search (BFS)**: Traverse or search data structures like graphs or trees level by level.
+
+74. **Depth First Search (DFS)**: Traverse or search graph/tree data structures by exploring as far as possible along each branch.
+
+75. **A* search algorithm**: Find the shortest path in a graph by considering both the cost to reach nodes and estimated cost to the goal.
+
+76. **Kruskal's Algorithm**: Construct a minimum spanning tree by adding edges in order of increasing weight.
+
+77. **Greedy Algorithm**: Optimize a problem by making locally optimal choices at each step.
+
+78. **Genetic Algorithm**: Solve optimization and search problems using principles of natural selection.
+
+79. **Merge Sort**: Implement a sorting algorithm that divides the array into halves recursively to merge sorted halves.
+
+80. **Bubble Sort**: Implement a simple comparison-based sorting algorithm.
+
+81. **Selection Sort**: Sort a list by repeatedly finding the minimum element and moving it to the sorted portion.
+
+82. **Binary Search**: Find the position of a target value within a sorted array.
+
+83. **Topological Sort**: Order vertices in a directed acyclic graph such that for every directed edge uv, vertex u comes before v.
+
+84. **LRU Cache Replacement**: Design a cache replacement policy to replace the least recently used item.
+
+85. **Traveling Salesman Problem Algorithms**: Find the shortest possible route visiting each city and returning to the origin city.
+
+86. **Branch and Bound**: Solve combinatorial optimization problems like knapsack or traveling salesman problem.
+
+87. **PageRank Algorithm**: Rank web pages in search results based on their link structure.
+
+88. **Longest Common Subsequence Algorithm**: Determine the longest subsequence present in both of two given sequences.
+
+89. **RSA Algorithm**: Implement public-key encryption and decryption of messages using the RSA cryptosystem.
+
+90. **Radix Sort**: Sort a list of integers with integer keys by processing individual digits.
+
+91. **Tabu Search**: Solve optimization problems by navigating local search space with memory-based strategies.
+
+92. **Monte Carlo Algorithm**: Compute solutions to computational problems through repeated random sampling.
+
+93. **Coin Change Problem**: Determine the minimum number of coins needed to make a specific amount using given denominations.
+
+94. **Dynamic Programming**: Solve complex problems by breaking them into simpler subproblems, storing the solutions of subproblems to avoid computing the same results repeatedly.
+
+95. **Divide and Conquer**: Divide a problem into subproblems, solve them independently, and combine their solutions to solve the original problem.
+
+96. **Backtracking**: Solve constraint satisfaction problems by trying possible solutions incrementally and abandoning solutions that do not meet the constraints.
+
+97. **Huffman Coding**: Generate binary prefix codes for data compression, such that characters with higher frequency have shorter codes.
+
+98. **Hill Climbing**: Solve optimization problems by iteratively making locally optimal moves in the hope of finding a global optimum.
+
+99. **Expectation-Maximization Algorithm**: Find maximum likelihood estimates of parameters in statistical models with latent variables.
+
+100. **Ant Colony Optimization**: Solve hard optimization problems through probabilistic algorithms inspired by the behavior of ant colonies.
+
+101. **Fisher-Yates Shuffle Algorithm**: Randomly permute a finite sequence of elements, such as an array.
+
+102. **Johnson's Algorithm**: Find shortest paths between all pairs of nodes in a graph with some negative edge weights.
+
+103. **Trie Data Structure**: Store and search strings efficiently by organizing words into a tree-like data structure.
+
+104. **Max-flow Min-cut Theorem**: Confirm that in any flow network, the maximum flow value is equal to the value of the minimum cut.
+
+105. **Berlekamp-Massey Algorithm**: Determine the shortest linear feedback shift register for a given binary sequence.
+
+106. **Hungarian Algorithm**: Solve assignment problems, such as assigning workers to jobs based on minimum cost.
+
+107. **Clique Enumeration Algorithm**: Identify all possible cliques within a given graph.
+
+108. **Mutual Exclusion Algorithm**: Achieve mutual exclusion in a distributed computing environment to prevent concurrent processes from interfering with each other.
+
+109. **Centroid Decomposition**: Decompose a tree for efficient querying and updating of subtree properties.
+
+110. **Sparse Table**: Store and query range minimum or maximum efficiently using static information.
+
+111. **Euler's Totient Function**: Determine the number of integers up to a given integer that are coprime to it.
+
+112. **Chooser**: Develop algorithms for selecting elements from a set according to specific rules, often used in probabilistic or strategic selection scenarios.
+
+113. **Depth-height Reduction Tree / Splay Tree**: Implement a self-adjusting form of a binary search tree.
+
+114. **AVL Tree**: Maintain a balanced binary search tree to keep operations like insertion, deletion, and lookup efficient.
+
+115. **Red-Black Tree**: Implement a binary search tree with balance constraints to ensure O(log n) time complexity for operations.
+
+116. **Skip List**: Implement a data structure that allows quick search, insertion, and deletion equivalent to balanced trees.
+
+117. **Mo's Algorithm**: Answer a sequence of query operations on static arrays efficiently, such as range queries.
+
+118. **Disjoint Set Union**: Implement a data structure to dynamically connect and demonstrate connectivity between elements.
+
+119. **String Algorithms**: Implement efficient algorithms for pattern matching, searching, parsing, and manipulating strings.
+
+120. **Computational Geometry Algorithms**: Implement algorithms to solve geometric problems, such as finding convex hulls or line intersections.
+
+121. **Approximation Algorithms**: Solve NP-hard optimization problems by finding approximately correct answers within a reasonable time.
+
+122. **Quantum Algorithms**: Explore quantum computational solutions for factoring (Shor's Algorithm) and search (Grover's Algorithm).
+
+123. **Polynomial Time Approximation Schemes**: Develop algorithms that provide approximate solutions to optimization problems with trade-offs between approximation ratio and running time.

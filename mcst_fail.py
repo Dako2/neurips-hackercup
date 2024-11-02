@@ -1,3 +1,8 @@
+mcst.py
+
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
+
 import random
 import math
 import json
@@ -6,7 +11,7 @@ from collections import defaultdict
 import re 
 from solution import Solution, SolutionManager
 from lib.prompts import CODER_INSTRUCTIONS
-from lib.llms import LLM, mcts_multiple_models_n_tasks
+from lib.llms import LLM, mcts_multiple_models_n_tasks, generate_response_n_async
 from lib.utils import (
     create_logger,
     load_problem_from_folder,
@@ -16,9 +21,10 @@ from lib.utils import (
     save_to_disk,
 )
 import json 
+
 from sentence_transformers import SentenceTransformer, util
 
-from solver import simple_initial_advisor_prompt, _coder
+from solver import simple_initial_advisor_prompt, _coder, time_complexity_analyzer, zero_shot
 
 # Configure logging
 
@@ -75,7 +81,7 @@ class Node:
         """
         return [
             "Refine the method to improve the correction and time complexity",
-            #"Adjust logic for fewer loops.",
+            "The earlier response didn’t completely address the problem due to a slight misunderstanding about the setup of ***. Correct this here:\n### Revised Logic"
         ]
 
     def add_child(self, state, code, parent, action=None, prompt=None):
@@ -110,9 +116,8 @@ def print_tree(node: Node, prefix: str = "", current_node: Node = None):
 
 class SR_MCTS_LLM:
     def __init__(self, problem, max_nodes, exploration_constant=1.4, alpha=0.5, gamma=0.9, logger = None):
-        prompt = simple_initial_advisor_prompt.format(problem=problem.problem_description, selected_language="cpp")
-        
-        self.root = Node(prompt, "")
+        self.root = Node(problem.problem_description, '')
+
         self.problem = problem  # List of (input, expected_output)
         self.max_nodes = max_nodes
         self.c = exploration_constant
@@ -124,12 +129,26 @@ class SR_MCTS_LLM:
         self.fast_llm = LLM(model_name='gpt4')
         self.model_name = "gpt4"
         self.strong_llm = LLM(model_name=self.model_name)
+        self.o1_llm = LLM(model_name='gpt4')
+        
         self.previous_solutions = set()  # Store previously generated solutions
         self.logger = logger
         if not self.logger:
             self.logger = create_logger(f'logs/temp_MCTS_.log', f'temp_mcts')
-
-    def search(self):
+        
+        self.logger.info(f"start to solve: {problem.problem_description}")
+        out = time_complexity_analyzer(problem)
+        self.logger.info(f"Time Complexity info: {out}")        
+        
+        prompt = simple_initial_advisor_prompt.format(problem=problem.problem_description, selected_language="cpp")
+        
+        message = [{'role': 'user', 'content': prompt + f"#Time Complexity Requirement:{out}"}]
+        out = self.o1_llm.run_messages(messages=message)
+        message += [{'role': 'assistant', 'content': out}]
+        self.logger.info(f"o1: {out}")        
+        
+        
+    async def search(self):
         while self.tree_size < self.max_nodes:
             self.iteration += 1
             self.logger.info(f"\nIteration {self.iteration}: Tree Size = {self.tree_size}")
@@ -140,16 +159,16 @@ class SR_MCTS_LLM:
                 break
             self.logger.info(f"Selected node for expansion: Node ID {id(node)}")
             # Expansion Phase
-            child_node, q_value = self.expand(node)
-            print_tree(self.root, current_node=child_node)
-            # Backpropagation Phase
-            self.backpropagate(child_node, q_value)
+            await self.expand(node)
             # Check for terminal solution
-            if child_node.is_terminal():
+            if node.is_terminal():
                 self.logger.info("Terminal solution found.")
                 break
+        # After search, perform final analysis
+        self.sm.final_analysis()
         # Return the best solution found
         return self.get_best_solution()
+
 
     def select(self, node):
         while True:
@@ -184,7 +203,96 @@ class SR_MCTS_LLM:
         selected_node = random.choice(best_nodes)
         return selected_node
     
-    def expand(self, node):
+    async def expand(self, node):
+        # Use the action as the critique
+        action = self.get_action(node)
+
+        messages = self.build_prompt_with_feedback(node)
+        #messages.extend([{'role': 'user', 'content': action}])
+
+        self.logger.debug(f"\n@_@ - Messages:{messages}")
+
+        n = 1
+        model_list = ['gpt4', 'gemini']
+        
+        # Create tasks for asynchronous API calls
+        api_tasks = [
+            generate_response_n_async(model, messages, temperature=1, n=n)
+            for model in model_list
+        ]
+
+        # Initialize a ThreadPoolExecutor
+        loop = asyncio.get_running_loop()
+        with ThreadPoolExecutor() as executor:
+            # List to keep track of evaluation tasks
+            eval_tasks = []
+
+            # Process API responses as they complete
+            for api_future in asyncio.as_completed(api_tasks):
+                responses = await api_future
+                for resp in responses:
+                    # Submit evaluation task to executor
+                    eval_task = loop.run_in_executor(
+                        executor,
+                        self.process_response,
+                        node,
+                        resp,
+                        action,
+                        messages
+                    )
+                    eval_tasks.append(eval_task)
+
+            # Process evaluations as they complete
+            for eval_future in asyncio.as_completed(eval_tasks):
+                child_node, q_value = await eval_future
+                print_tree(self.root, current_node=child_node)
+                # Backpropagation Phase
+                self.backpropagate(child_node, q_value)
+                # Check for terminal solution
+                if child_node.is_terminal():
+                    self.logger.info("Terminal solution found.")
+                    break
+
+    async def evaluate_responses(self, node, response, action, messages, executor, loop):
+        eval_task = loop.run_in_executor(
+            executor,
+            self.process_response,
+            node,
+            response,
+            action,
+            messages
+        )
+        child_node, q_value = await eval_task
+        print_tree(self.root, current_node=child_node)
+        # Backpropagation Phase
+        self.backpropagate(child_node, q_value)
+        # Check for terminal solution
+        if child_node.is_terminal():
+            self.logger.info("Terminal solution found.")
+
+                
+    def process_response(self, node, resp, action, messages):
+        critique = resp.strip()
+        self.logger.info(f"Output of Model: {critique}")
+        node.state = critique
+        new_code = self.worker(node, critique)
+        
+        child_node = node.add_child(state=critique, code=new_code, parent=node, action=action, prompt=json.dumps(messages))
+        self.tree_size += 1
+        self.logger.info(f"Expanded node: Node ID {id(child_node)}")
+        
+        # Evaluation Phase
+        q_value = self.evaluate(child_node)
+        self.logger.info(f"Evaluation of node ID {id(child_node)}: Q-value = {q_value:.4f}")
+        
+        # Create a Solution instance and add it to the SolutionManager
+        s = Solution(new_code, self.problem, self.model_name, "mcts", lang=SELECT_LANGUAGE)
+        self.sm.add_solution(s)
+        
+        # Return the child node and its q_value
+        return child_node, q_value
+
+    def expand_depecate(self, node):
         # Use the action as the critique
         action = self.get_action(node)
 
@@ -193,24 +301,28 @@ class SR_MCTS_LLM:
         self.logger.debug(f"\n@_@ - Messages:{messages}")
 
         n = 2
-        response = mcts_multiple_models_n_tasks(messages, temperature=1, model_list = ['gpt4','gemini'], n = n, seed=None)
+        response = mcts_multiple_models_n_tasks(messages, temperature=1, model_list = ['gpt4','gemini','anthropic'], n = n)
         
-        for i in range(n):
+        for i in range(len(response)):
             
             critique = response[i]['response'].strip()
             self.logger.info(f"Output of Model [{response[i]['model']}]: {critique}")
-            new_code = self.worker(node, critique)
-
-            child_node = node.add_child(state=critique, code=new_code, parent=node, action=action, prompt=json.dumps(messages))
-            self.tree_size += 1
-            self.logger.info(f"Expanded node: Node ID {id(child_node)}")
+            child_node, q_value = self.evaluate(node, critique, action, messages)
             
-            # Evaluation Phase
-            q_value = self.evaluate(child_node)
-            self.logger.info(f"Evaluation of node ID {id(child_node)}: Q-value = {q_value:.4f}")
-        
         return child_node, q_value
     
+    def evaluate(self, node, critique, action, messages):
+        new_code = self.worker(node, critique)
+
+        child_node = node.add_child(state=critique, code=new_code, parent=node, action=action, prompt=json.dumps(messages))
+        self.tree_size += 1
+        self.logger.info(f"Expanded node: Node ID {id(child_node)}")
+        
+        # Evaluation Phase
+        q_value = self.evaluate(child_node)
+        self.logger.info(f"Evaluation of node ID {id(child_node)}: Q-value = {q_value:.4f}")
+        return child_node, q_value
+        
     def expand_simple(self, node):
         # Use the action as the critique
         action = self.get_action(node)
@@ -283,9 +395,10 @@ class SR_MCTS_LLM:
             })
             current_node = current_node.parent
         conversation_history = conversation_history[::-1]
-        #messages = [{'role': 'user', 'content': prompt}]
-        #messages.extend(conversation_history)
-        return conversation_history
+        messages = [{'role': 'user', 'content': prompt}]
+        messages.extend(conversation_history)
+        
+        return messages
     
     def summarize_state(self, evaluation_text):
         """Summarize the evaluation text to reduce length."""
@@ -325,7 +438,7 @@ class SR_MCTS_LLM:
         if testreport.status == "passed" and fullreport.status == "complete":
             node.terminal = True
 
-        node.evaluation = f"{self.problem.problem_name}:\n - Sample test: {testreport.message}\n - Full test: {fullreport.as_xml}"
+        node.evaluation = f"\n - Sample test: {testreport.message}\n - Full test: {fullreport.as_xml}"
         node.uniqueness_score = uniqueness_score
         self.logger.info(f"\n@_@ - Node: {node.evaluation}")
         
@@ -421,17 +534,27 @@ if __name__ == '__main__':
     from lib.utils import load_problem_from_folder, list_problem_names, load_problem_training, load_problem_v2024
     from pathlib import Path
 
+    """
+    problem_directory = "dataset/2023/round2"
+    problem_names = list_problem_names(problem_directory, "2023")
+    problem_list = []
+    for problem_name in problem_names:
+        problem_list.append(load_problem_training(problem_name, Path(problem_directory)))
+    """
+
     problem_directory = "contestData"
     problem_names = list_problem_names(problem_directory, "2024")
     problem_list = []
     for problem_name in problem_names:
         problem_list.append(load_problem_v2024(problem_name, Path(problem_directory)))
     problem = problem_list[0]
+    print(problem.problem_name)
+ 
 
     # Instantiate the SR_MCTS_LLM algorithm
     sr_mcts_llm = SR_MCTS_LLM(problem, max_nodes=30)
     # Perform the search
-    best_solution = sr_mcts_llm.search()
+    best_solution = asyncio.run(sr_mcts_llm.search())
 
     # Output the best solution found
     print("\nBest Solution Found:")

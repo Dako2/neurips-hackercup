@@ -1,0 +1,173 @@
+1. Aho-Corasick Algorithm
+2. Bellman-Ford Algorithm
+3. Borůvka's Algorithm
+4. Dinic's Algorithm
+5. Edmonds-Karp Algorithm
+6. Floyd-Warshall Algorithm
+7. Ford-Fulkerson Algorithm
+8. Gabow's Algorithm for Strongly Connected Components
+9. Hopcroft-Karp Algorithm
+10. Knuth-Morris-Pratt Algorithm (KMP)
+11. Kosaraju's Algorithm
+12. Manacher's Algorithm
+13. Maximum Flow Algorithms
+14. Minimum Cost Maximum Flow Algorithm
+15. Rabin-Karp Algorithm
+16. Stoer-Wagner Algorithm
+17. Suffix Array Construction
+18. Tarjan's Algorithm for Strongly Connected Components
+19. Tarjan's Offline Lowest Common Ancestor Algorithm
+20. Z Algorithm
+21. Dynamic Programming with Bitmasks
+22. Segment Tree with Lazy Propagation
+23. Fenwick Tree (Binary Indexed Tree)
+24. Square Root Decomposition
+25. Persistent Segment Tree
+26. Link-Cut Tree
+27. Heavy-Light Decomposition
+28. Convex Hull Trick
+29. Fast Fourier Transform (FFT)
+30. Number Theoretic Transform (NTT)
+31. Kademlia Algorithm
+32. Dominator Tree
+33. Voronoi Diagram
+34. Delaunay Triangulation
+35. Graham Scan
+36. Gale-Shapley Algorithm (Stable Marriage Problem)
+37. K-d Tree
+38. Interval Tree
+39. Network Simplex Algorithm
+40. Quadtree
+41. Treap
+42. Splay Tree
+43. Meet in the Middle
+44. Simulated Annealing
+45. Euler Tour Technique
+46. Christofides Algorithm
+47. Kadane's Algorithm
+48. Ternary Search Algorithm
+49. Bloom Filter
+50. Byzantine Generals Problem
+51. Critical Path Method
+52. Z-algorithm
+53. Boyer-Moore Algorithm
+54. Needleman-Wunsch Algorithm
+55. Pollard's rho Algorithm
+56. Miller–Rabin primality test Algorithm
+57. Monge's theorem Algorithm
+58. Schwarz–Christoffel mapping Algorithm
+59. Tower of Hanoi Algorithm
+60. Huffman Encoding Algorithm
+61. Heapsort
+62. Minimum Spanning Tree
+63. Edit Distance
+64. Linear Regression
+65. Gradient Descent
+66. Random Forest
+67. K-means
+68. Neural Network
+69. Support Vector Machine
+70. Apriori
+71. Prim's algorithm
+72. Dijkstra's algorithm
+73. Quick Sort
+74. Breadth First Search (BFS)
+75. Depth First Search (DFS)
+76. A* search algorithm
+77. Kruskal's algorithm
+78. Greedy Algorithm
+79. Genetic Algorithm
+80. Merge Sort
+81. Bubble Sort
+82. Selection Sort
+83. Binary Search
+84. Topological Sort
+85. LRU Cache Replacement
+86. Traveling Salesman Problem algorithms
+87. Branch and bound
+88. PageRank algorithm
+89. Longest common subsequence algorithm
+90. RSA Algorithm
+91. Radix Sort
+92. Tabu Search
+93. Monte Carlo Algorithm
+94. Coin Change Problem
+95. Dynamic Programming
+96. Divide and Conquer
+97. Backtracking 
+98. Huffman Coding
+99. Hill Climbing
+100. Expectation-Maximization Algorithm
+101. Ant Colony Optimization
+102. Fisher-Yates Shuffle Algorithm
+103. Johnson's Algorithm
+104. Trie data structure
+105. Max-flow min-cut theorem
+106. Berlekamp-Massey algorithm
+107. Hungarian algorithm
+108. Clique enumeration algorithm
+109. Mutual exclusion algorithm
+110. Centroid Decomposition
+111. Suffix Array
+112. Sparse Table
+113. Euler's Totient Function
+114. Chooser
+115. Minimum Spanning Tree (MST) - Boruvka's Algorithm
+116. Depth-height Reduction Tree / Splay Tree
+117. AVL Tree
+118. Red-Black Tree
+119. Skip List
+120. Mo's Algorithm
+121. Disjoint Set Union
+122. String Algorithms
+123. Computational Geometry Algorithms
+124. Approximation Algorithms
+125. Quantum Algorithms
+126. Polynomial Time Approximation Schemes
+{
+  "algorithms":[
+    "Bellman Ford Algorithm",
+    "Breadth-First Search (BFS) Algorithm",
+    "Depth-First Search (DFS) Algorithm",
+    "Topological Sorting Algorithm",
+    "Dijkstra’s Algorithm",
+    "Floyd Warshall Algorithm",
+    "Prim’s Minimum Spanning Tree Algorithm",
+    "Kruskal’s Minimum Spanning Tree Algorithm",
+    "Travelling Salesman Problem",
+    "Dynamic Programming",
+    "Bit Manipulation",
+    "Hashing Algorithm",
+    "Memoization",
+    "Strassen’s Matrix Multiplication Algorithm",
+    "Gaussian Elimination Algorithm",
+    "Ford-Fulkerson algorithm",
+    "Greedy Algorithm",
+    "Knapsack Problem",
+    "Backtracking Algorithm",
+    "Binary Search Algorithm"]
+}
+{
+  "algorithms": [
+    "Kruskal's Algorithm",
+    "Dijkstra's Algorithm",
+    "Bellman-Ford Algorithm",
+    "Floyd Warshall Algorithm",
+    "Prim's Algorithm",
+    "Boruvka's Algorithm",
+    "Ford Fulkerson Algorithm",
+    "Kosaraju's Algorithm",
+    "Tarjan's Algorithm",
+    "Edmonds-Karp Algorithm",
+    "Hopcroft–Karp Algorithm",
+    "Strongly Connected Components Algorithm",
+    "Strassen's Matrix Multiplication Algorithm",
+    "Fast Fourier Transform",
+    "Hungarian Algorithm",
+    "Traveling Salesman Problem",
+    "Knapsack Problem",
+    "Blum-Blum-Shub Algorithm",
+    "RSA Algorithm",
+    "Rabin-Karp Algorithm"
+  ]
+}

@@ -1,890 +1,236 @@
-{
-'algorithms': ['Quick Sort', 'Merge Sort', 'Insertion Sort', 'Bucket Sort', 'Heap Sort', 'Selection Sort', 'Bubble Sort', 'Shell Sort', 'Radix Sort', 'Counting Sort', 'Binary Search', 'Linear Search', 'Depth First Search', 'Breadth First Search', 'Floyd’s Warshall', 'Dijkstra’s', 'Kruskal’s', 'Prim’s', 'Sieve of Eratosthenes', 'Bellman Ford', 'Huffman Coding', 'KMP Algorithm']
-}
-{"algorithms": ["Bubble Sort", "Merge Sort", "Insertion Sort", "Quick Sort", "Heap Sort", "Radix Sort", "Bucket Sort", "Selection Sort", "Shell Sort", "Counting Sort", "Breadth-First Search", "Depth-First Search", "Binary Search", "Linear Search", "Dijkstra's Algorithm", "Prim's Algorithm", "Kruskal's Algorithm", "Huffman Coding", "Naive Bayes Classifier", "K-Means Clustering", "Support Vector Machines", "Decision Trees", "Random Forest", "Neural Networks", "Genetic Algorithm", "Gradient Descent", "Backpropagation", "Gauss-Jordan Elimination", "Floyd-Warshall Algorithm", "Bellman-Ford Algorithm"]}
-{
-  "algorithms": [
-    "A* Search", 
-    "Binary Search", 
-    "Merge Sort", 
-    "Quick Sort", 
-    "Hashing", 
-    "Dijkstra’s Algorithm", 
-    "Floyd-Warshall Algorithm", 
-    "Linear Search", 
-    "Depth-First Search", 
-    "Breadth-First Search", 
-    "Greedy Algorithms", 
-    "Kruskal’s Algorithm", 
-    "Prim’s Algorithm", 
-    "Bellman-Ford Algorithm", 
-    "Knapsack Problem", 
-    "Job Sequencing Problem", 
-    "Huffman Coding", 
-    "K-Means Clustering", 
-    "Hierarchical Clustering",
-    "Support Vector Machine (SVM)",
-    "K-Nearest Neighbors",
-    "Decision Trees",
-    "Linear Regression",
-    "Logistic Regression",
-    "Artificial Neural Networks",
-    "Naive Bayes",
-    "Random Forests"
-  ]
-}
-{
-  "algorithms": [
-    "Bubble Sort",
-    "Merge Sort",
-    "Quick Sort",
-    "Binary Search",
-    "Breadth-First Search",
-    "Depth-First Search",
-    "Dijkstra's algorithm",
-    "Floyd-Warshall algorithm",
-    "A* algorithm",
-    "Genetic Algorithm"
-  ]
-}
-{
-  "algorithms": [
-    "Bubble Sort",
-    "Merge Sort",
-    "Quick Sort",
-    "Insertion Sort",
-    "Selection Sort",
-    "Binary Search",
-    "Breadth-First Search",
-    "Depth-First Search",
-    "Dijkstra's Algorithm",
-    "A* Search Algorithm",
-    "Kruskal's Algorithm",
-    "Prim's Algorithm"
-  ]
-}
-{
-  "algorithms": [
-    "Bubble Sort",
-    "Merge Sort",
-    "Quick Sort",
-    "Insertion Sort",
-    "Selection Sort",
-    "Radix Sort",
-    "Heap Sort"
-  ]
-}
-{
-  "algorithms": [
-    "Bubble Sort",
-    "Selection Sort",
-    "Insertion Sort",
-    "Merge Sort",
-    "Quick Sort",
-    "Heap Sort",
-    "Radix Sort",
-    "Binary Search",
-    "Depth First Search",
-    "Breadth First Search"
-  ]
-}
-{
-  "algorithms": [
-    "Bubble Sort",
-    "Merge Sort",
-    "Quick Sort",
-    "Binary Search",
-    "Depth First Search",
-    "Breadth First Search"
-  ]
-}
-{
-  "algorithms": [
-    "Bubble Sort",
-    "Quick Sort",
-    "Merge Sort",
-    "Insertion Sort",
-    "Selection Sort",
-    "Binary Search",
-    "Depth First Search",
-    "Breadth First Search",
-    "Dijkstra's Algorithm",
-    "Prim's Algorithm"
-  ]
-}
-{
-   "algorithms": [
-      "Bubble Sort",
-      "Merge Sort",
-      "Quick Sort",
-      "Insertion Sort",
-      "Selection Sort",
-      "Binary Search",
-      "Breadth First Search",
-      "Depth First Search",
-      "Dijkstra's Algorithm",
-      "A* Search Algorithm"
-   ]
-}
-{
-  "algorithms": [
-    "Bubble Sort",
-    "Selection Sort",
-    "Merge Sort",
-    "Quick Sort",
-    "Insertion Sort",
-    "Binary Search",
-    "Depth First Search",
-    "Breadth First Search",
-    "Dijkstra's Algorithm",
-    "Floyd-Warshall Algorithm",
-    "Bellman-Ford Algorithm",
-    "Prim's Algorithm",
-    "Kruskal's Algorithm",
-    "A* Search",
-    "Genetic Algorithm",
-    "Simulated Annealing",
-    "Ant Colony Optimization"
-  ]
-}
-{
-  "algorithms": [
-    "Dynamic Programming",
-    "Breadth-First Search",
-    "Depth-First Search",
-    "Binary Search",
-    "Dijkstra's Algorithm",
-    "A* Search Algorithm",
-    "Floyd-Warshall Algorithm",
-    "Prim's Algorithm",
-    "Kruskal's Algorithm",
-    "KMP Algorithm",
-    "Suffix Array",
-    "Z-algorithm",
-    "Segment Trees",
-    "Convex Hull Algorithm",
-    "Bayesian Inference",
-    "Divide and Conquer",
-    "Backtracking",
-    "Greedy Algorithm",
-    "Integer Programming",
-    "Levenshtein Distance",
-    "Rabin-Karp Algorithm",
-    "Union-Find Disjoint Sets",
-    "Mo's Algorithm",
-    "Bellman-Ford Algorithm",
-    "Johnson’s Algorithm",
-    "Tarjan’s Algorithm",
-    "Huffman Coding",
-    "Knapsack Problem",
-    "Travelling Salesman Problem",
-    "Topological Sorting",
-    "Graph Coloring",
-    "Hamiltonian Cycle"
-  ]
-}
-{
-  "algorithms": [
-    "Greedy",
-    "Divide and Conquer",
-    "Dynamic Programming",
-    "Depth-First Search",
-    "Breadth-First Search",
-    "Binary Search",
-    "Dijkstra's Algorithm",
-    "Floyd-Warshall",
-    "Bellman-Ford",
-    "Knapsack",
-    "Travelling Salesman",
-    "A* algorithm",
-    "Graph theory",
-    "Hash Functions",
-    "Kruskal's algorithm",
-    "Knuth-Morris-Pratt (KMP)",
-    "Prim's algorithm",
-    "Bucket Sort",
-    "Merge Sort",
-    "Heap Sort",
-    "QuickSort",
-    "Tree Data Structures",
-    "Prefix sum Array",
-    "Heap",
-    "Depth limited search",
-    "Monte Carlo method",
-    "Suffix Array/Trees",
-    "Segment Trees",
-    "Trie",
-    "Strassen's Matrix Multiplication",
-    "Artificial Neural Networks",
-    "Genetic Algorithms",
-    "Matrix Exponentiation"
-  ]
-}
-{
-"algorithms":[
-"Travelling Salesman Problem Algorithm",
-"Dynamic Programming",
-"Genetic Algorithms",
-"Backtracking",
-"Neural Networks",
-"Support Vector Machines",
-"Fractional Knapsack Problem Algorithm",
-"Longest Increasing Subsequence",
-"Hierarchical Clustering",
-"Kruskal’s Minimum Spanning Tree Algorithm",
-"Prim’s Minimum Spanning Tree Algorithm",
-"Dijkstra's Shortest Path Algorithm",
-"Johnson’s Algorithm",
-"Floyd Warshall Algorithm",
-"Breadth First Search",
-"Depth First Search",
-"Bellman–Ford Algorithm",
-"Knapsack Problem Algorithm",
-"Artificial Neural Networks",
-"Convolutional Neural Networks",
-"Recurrent Neural Networks",
-"Deep Belief Networks",
-"Radial Basis Function Networks",
-"Restricted Boltzmann Machines",
-"Self Organizing Maps",
-"Decentralized Consensus Algorithms",
-"QuickSort",
-"MergeSort",
-"HeapSort",
-"ShellSort",
-"Gray Code",
-"Naive Pattern Searching Algorithm",
-"Rabin-Karp Algorithm",
-"Boyer Moore Algorithm"
-]
-}
-{
-  "algorithms": [
-    "Backpropagation",
-    "Viterbi Algorithm",
-    "Sieve of Eratosthenes",
-    "Perceptron Algorithm",
-    "Floyd Warshall Algorithm",
-    "Ford-Fulkerson Algorithm",
-    "Dijkstra’s Algorithm",
-    "Kruskals Algorithm",
-    "Bellman-Ford Algorithm",
-    "Hungarian Algorithm",
-    "Prim’s Algorithm",
-    "Travelling Salesman Problem Algorithm",
-    "Graph Coloring Algorithm",
-    "Breadth First Search Algorithm",
-    "Depth First Search Algorithm",
-    "Binary Search Algorithm",
-    "Quick Sort Algorithm",
-    "Merge Sort Algorithm",
-    "Intro Sort Algorithm",
-    "Heap Sort Algorithm",
-    "Knapsack Problem Algorithm",
-    "Levenshtein Distance Algorithm",
-    "Jaccard Similarity Algorithm",
-    "K-Nearest Neighbor Algorithm",
-    "K-Means Clustering Algorithm",
-    "Naive Bayes Algorithm",
-    "Support Vector Machine Algorithm",
-    "Decision Tree Algorithm",
-    "Random Forest Algorithm",
-    "Convolutional Neural Network Algorithm",
-    "Bidirectional A* Algorithm"
-  ]
-}
-{'algorithms': ['Bubble Sort', 'Quick Sort', 'Merge Sort', 'Binary Search', 'Dijkstra\'s Algorithm']}
-{
-  "algorithms": [
-    "Bubble Sort",
-    "Binary Search",
-    "Quick Sort",
-    "Depth First Search",
-    "A* Search"
-  ]
-}
-{'algorithms':['Quick Sort', 'Heap Sort', 'Merge Sort', 'Intro Sort', 'Shell Sort']}
-{'algorithms': ['QuickSort', 'MergeSort', 'HeapSort', 'RadixSort', 'Binary Search']}
-`
-`
-`
-j
-s
-o
-n
 
+1. **Aho-Corasick Algorithm**: O(n + m + z) where n is the length of the text, m is the total length of all patterns, and z is the number of pattern occurrences found.
 
-{
+2. **Bellman-Ford Algorithm**: O(VE) where V is the number of vertices and E is the number of edges.
 
+3. **Borůvka's Algorithm**: O(E log V) for constructing a minimum spanning tree.
 
- 
- 
-"
-a
-l
-g
-o
-r
-i
-t
-h
-m
-s
-"
-:
- 
-[
+4. **Dinic's Algorithm**: O(V^2E) for general networks and O(E√V) for unit capacity networks.
 
+5. **Edmonds-Karp Algorithm**: O(VE^2) for finding maximum flow.
 
- 
- 
- 
- 
-"
-F
-a
-s
-t
- 
-F
-o
-u
-r
-i
-e
-r
- 
-T
-r
-a
-n
-s
-f
-o
-r
-m
- 
-(
-F
-F
-T
-)
-"
-,
+6. **Floyd-Warshall Algorithm**: O(V^3) for all pairs shortest paths.
 
+7. **Ford-Fulkerson Algorithm**: O(max_flow * E) where max_flow is the maximum flow in the network.
 
- 
- 
- 
- 
-"
-A
-K
-S
- 
-P
-r
-i
-m
-a
-l
-i
-t
-y
- 
-T
-e
-s
-t
-"
-,
+8. **Gabow's Algorithm for Strongly Connected Components**: O(V + E).
 
+9. **Hopcroft-Karp Algorithm**: O(√V E) for finding maximum matching in a bipartite graph.
 
- 
- 
- 
- 
-"
-U
-k
-k
-o
-n
-e
-n
-'
-s
- 
-A
-l
-g
-o
-r
-i
-t
-h
-m
- 
-f
-o
-r
- 
-S
-u
-f
-f
-i
-x
- 
-T
-r
-e
-e
- 
-C
-o
-n
-s
-t
-r
-u
-c
-t
-i
-o
-n
-"
-,
+10. **Knuth-Morris-Pratt Algorithm (KMP)**: O(n + m) where n is the length of the text and m is the length of the pattern.
 
+11. **Kosaraju's Algorithm**: O(V + E).
 
- 
- 
- 
- 
-"
-S
-t
-r
-a
-s
-s
-e
-n
-'
-s
- 
-A
-l
-g
-o
-r
-i
-t
-h
-m
- 
-f
-o
-r
- 
-M
-a
-t
-r
-i
-x
- 
-M
-u
-l
-t
-i
-p
-l
-i
-c
-a
-t
-i
-o
-n
-"
-,
+12. **Manacher's Algorithm**: O(n) for finding the longest palindromic substring.
 
+13. **Maximum Flow Algorithms**: Various complexities depending on the implementation (e.g., Edmonds-Karp: O(VE^2)).
 
- 
- 
- 
- 
-"
-I
-n
-t
-e
-r
-i
-o
-r
- 
-P
-o
-i
-n
-t
- 
-M
-e
-t
-h
-o
-d
-s
- 
-f
-o
-r
- 
-L
-i
-n
-e
-a
-r
- 
-P
-r
-o
-g
-r
-a
-m
-m
-i
-n
-g
-"
+14. **Minimum Cost Maximum Flow Algorithm**: O(VE log V) using the cycle cancelling method or successive shortest path algorithm.
 
+15. **Rabin-Karp Algorithm**: Average O(n + m), worst case O(nm) due to hash collisions.
 
- 
- 
-]
+16. **Stoer-Wagner Algorithm**: O(V^3) for finding minimum cut.
 
+17. **Suffix Array Construction**: O(n log n) for suffix sorting.
 
-}
+18. **Tarjan's Algorithm for Strongly Connected Components**: O(V + E).
 
+19. **Tarjan's Offline Lowest Common Ancestor Algorithm**: O(n + qα(n)) where α is the inverse Ackermann function, n is the number of nodes, and q is the number of queries.
 
-`
-`
-`
-`
-`
-`
-j
-s
-o
-n
+20. **Z Algorithm**: O(n + m).
 
+21. **Dynamic Programming with Bitmasks**: O(n * 2^n) for traveling salesman problem solutions.
 
-{
+22. **Segment Tree with Lazy Propagation**: O(log n) for updates and queries.
 
+23. **Fenwick Tree (Binary Indexed Tree)**: O(log n) for updates and queries.
 
- 
- 
-"
-a
-l
-g
-o
-r
-i
-t
-h
-m
-s
-"
-:
- 
-[
+24. **Square Root Decomposition**: O(sqrt(n)) for range queries and updates.
 
+25. **Persistent Segment Tree**: O(log n) per update and query, providing versions of the data structure.
 
- 
- 
- 
- 
-"
-F
-a
-s
-t
- 
-F
-o
-u
-r
-i
-e
-r
- 
-T
-r
-a
-n
-s
-f
-o
-r
-m
-"
-,
+26. **Link-Cut Tree**: O(log n) for dynamic tree operations.
 
+27. **Heavy-Light Decomposition**: O(log^2 n) for path queries and updates.
 
- 
- 
- 
- 
-"
-S
-t
-r
-a
-s
-s
-e
-n
-'
-s
- 
-M
-a
-t
-r
-i
-x
- 
-M
-u
-l
-t
-i
-p
-l
-i
-c
-a
-t
-i
-o
-n
-"
-,
+28. **Convex Hull Trick**: O(log n) per line query and insertion.
 
+29. **Fast Fourier Transform (FFT)**: O(n log n) for computing the DFT.
 
- 
- 
- 
- 
-"
-C
-o
-p
-p
-e
-r
-s
-m
-i
-t
-h
-–
-W
-i
-n
-o
-g
-r
-a
-d
- 
-A
-l
-g
-o
-r
-i
-t
-h
-m
-"
-,
+30. **Number Theoretic Transform (NTT)**: O(n log n) similar to FFT but over modular arithmetic.
 
+31. **Kademlia Algorithm**: O(log n) for peer-to-peer network operations.
 
- 
- 
- 
- 
-"
-H
-o
-p
-c
-r
-o
-f
-t
--
-K
-a
-r
-p
- 
-A
-l
-g
-o
-r
-i
-t
-h
-m
-"
-,
+32. **Dominator Tree**: O(V log V + E) or faster using data structure optimizations.
 
+33. **Voronoi Diagram**: O(n log n).
 
- 
- 
- 
- 
-"
-A
-*
- 
-S
-e
-a
-r
-c
-h
- 
-A
-l
-g
-o
-r
-i
-t
-h
-m
-"
+34. **Delaunay Triangulation**: O(n log n).
 
+35. **Graham Scan**: O(n log n) for constructing convex hulls.
 
- 
- 
-]
+36. **Gale-Shapley Algorithm (Stable Marriage Problem)**: O(n^2).
 
+37. **K-d Tree**: O(log n) average case for insertions, deletions, and searches.
 
-}
+38. **Interval Tree**: O(log n) for insertion and querying.
 
+39. **Network Simplex Algorithm**: Polynomial time, typically faster in practice for minimum cost flow.
 
-`
-`
-`
-```json
-{
-  "algorithms": [
-    "AKS Primality Test",
-    "Schönhage-Strassen Algorithm",
-    "Strassen's Matrix Multiplication",
-    "Fast Fourier Transform (FFT)",
-    "Hopcroft-Karp Algorithm"
-  ]
-}
-```
-```json
-{
-  "algorithms": [
-    "Suffix Automaton",
-    "Heavy-Light Decomposition",
-    "Dinic's Algorithm",
-    "Centroid Decomposition",
-    "Fast Fourier Transform"
-  ]
-}
-```
-```json
-{
-  "algorithms": [
-    "Suffix Automaton",
-    "Heavy-Light Decomposition",
-    "Centroid Decomposition",
-    "Dinic's Algorithm",
-    "Hungarian Algorithm",
-    "Convex Hull Trick",
-    "Bitmask Dynamic Programming",
-    "Fast Fourier Transform",
-    "Link-Cut Trees",
-    "Aho-Corasick Automaton",
-    "Binary Lifting",
-    "Matrix Exponentiation",
-    "Euler Tour Technique",
-    "Mo's Algorithm",
-    "Sqrt Decomposition",
-    "Treap",
-    "Persistent Segment Trees",
-    "Tarjan's Algorithm",
-    "Hopcroft-Karp Algorithm",
-    "Kruskal's Algorithm with DSU Optimization"
-  ]
-}
-```
-```json
-{
-  "algorithms": [
-    "Trie",
-    "Suffix Automaton",
-    "Heavy-Light Decomposition",
-    "Dinic's Algorithm",
-    "Aho-Corasick Automaton",
-    "Fenwick Tree (Binary Indexed Tree)",
-    "Treap",
-    "Segment Tree with Lazy Propagation",
-    "Disjoint Set Union (Union-Find) with Rollback",
-    "Mo's Algorithm",
-    "Hopcroft-Karp Algorithm",
-    "K-D Tree",
-    "Convex Hull Trick",
-    "Link-Cut Trees",
-    "Fast Fourier Transform (FFT)",
-    "Matrix Exponentiation",
-    "Euler Tour Technique",
-    "Sqrt Decomposition",
-    "Bitmask Dynamic Programming",
-    "Persistent Data Structures"
-  ]
-}
-```
-```json
-{
-  "algorithms": [
-    "Suffix Automaton",
-    "Heavy Light Decomposition",
-    "Centroid Decomposition",
-    "Dinic's Algorithm",
-    "Aho-Corasick Automaton",
-    "Mo's Algorithm",
-    "Link-Cut Trees",
-    "Splay Trees",
-    "Fast Fourier Transform (FFT)",
-    "Convex Hull Trick",
-    "Tarjan's Algorithm for Strongly Connected Components",
-    "Euler Tour Technique",
-    "Bitmask Dynamic Programming",
-    "Meet in the Middle",
-    "Persistent Data Structures",
-    "Wavelet Trees",
-    "Implicit Treap",
-    "Matrix Exponentiation",
-    "Maximum Flow with Dinic's Algorithm",
-    "Kruskal's Algorithm with Union-Find Optimization"
-  ]
-}
-```
+40. **Quadtree**: O(log n) average case for insertion and search.
+
+41. **Treap**: O(log n) for insertion, deletion, and search.
+
+42. **Splay Tree**: O(log n) amortized for access operations.
+
+43. **Meet in the Middle**: O(2^(n/2)) for subset sum and other combinatorial problems.
+
+44. **Simulated Annealing**: Varies; typically polynomial for approximations.
+
+45. **Euler Tour Technique**: O(n) for preprocessing and O(1) queries.
+
+46. **Christofides Algorithm**: O(n^2) for approximating the solution to TSP.
+
+47. **Kadane's Algorithm**: O(n) for maximum subarray sum.
+
+48. **Ternary Search Algorithm**: O(log n) for unimodal function optimization.
+
+49. **Bloom Filter**: O(1) for insertion and queries with false positives.
+
+50. **Byzantine Generals Problem**: Varies based on implementations and assumptions about the environment.
+
+51. **Critical Path Method**: O(V + E) for determining project duration.
+
+52. **Boyer-Moore Algorithm**: O(n/m) average-case for pattern matching.
+
+53. **Needleman-Wunsch Algorithm**: O(nm) for sequence alignment.
+
+54. **Pollard's rho Algorithm**: O(√N) for factorization.
+
+55. **Miller-Rabin Primality Test**: O(k log^3 n) for k iterations of the test.
+
+56. **Monge's Theorem Algorithm**: Contextual, related to matrix optimization.
+
+57. **Schwarz–Christoffel Mapping Algorithm**: Complex; calculated case-by-case for conformal mappings.
+
+58. **Tower of Hanoi Algorithm**: O(2^n) recursive solution.
+
+59. **Huffman Encoding Algorithm**: O(n log n) for building the Huffman tree.
+
+60. **Heapsort**: O(n log n) for sorting.
+
+61. **Minimum Spanning Tree**: O(E log V) using Kruskal's or Prim's algorithm.
+
+62. **Edit Distance**: O(nm) using dynamic programming.
+
+63. **Linear Regression**: O(nm^2) for ordinary least squares with m parameters and n examples.
+
+64. **Gradient Descent**: O(nt) where n is data size, t is number of iterations.
+
+65. **Random Forest**: O(mn log n) where m is the number of trees and n is number of samples.
+
+66. **K-means**: O(nkt) for n data points, k clusters, t iterations.
+
+67. **Neural Network**: Varies; depends on architecture and dataset size.
+
+68. **Support Vector Machine**: O(n^2) to O(n^3) for training, depending on implementation.
+
+69. **Apriori Algorithm**: O(2^n) exponential, to find frequent itemsets.
+
+70. **Prim's Algorithm**: O(E log V) to find MST.
+
+71. **Dijkstra's Algorithm**: O(E + V log V) using priority queues.
+
+72. **Quick Sort**: O(n^2) worst-case, O(n log n) average-case.
+
+73. **Breadth First Search (BFS)**: O(V + E).
+
+74. **Depth First Search (DFS)**: O(V + E).
+
+75. **A* search algorithm**: O(E + V log V) in a graph with admissible heuristic.
+
+76. **Kruskal's Algorithm**: O(E log E) to find MST.
+
+77. **Greedy Algorithm**: Varies per specific implementation.
+
+78. **Genetic Algorithm**: Varies; generally O(generation size * number of generations).
+
+79. **Merge Sort**: O(n log n).
+
+80. **Bubble Sort**: O(n^2).
+
+81. **Selection Sort**: O(n^2).
+
+82. **Binary Search**: O(log n).
+
+83. **Topological Sort**: O(V + E).
+
+84. **LRU Cache Replacement**: O(1) with linked hash map approach.
+
+85. **Traveling Salesman Problem Algorithms**: Exponential; varies with approach (e.g. O(n^2 * 2^n) for dynamic programming).
+
+86. **Branch and Bound**: Varies; typically exponential for exact solutions.
+
+87. **PageRank Algorithm**: O((V + E) log(1/ε)) for convergence to ε tolerance.
+
+88. **Longest Common Subsequence Algorithm**: O(nm) using dynamic programming.
+
+89. **RSA Algorithm**: O((log n)^3) for encryption/decryption operations.
+
+90. **Radix Sort**: O(nk) where k is the length of the longest number.
+
+91. **Tabu Search**: Varies; heuristic optimization method.
+
+92. **Monte Carlo Algorithm**: Varies; depends on accuracy and convergence.
+
+93. **Coin Change Problem**: O(n * amount) using dynamic programming.
+
+94. **Dynamic Programming**: Varies per problem; generally polynomial time complexity.
+
+95. **Divide and Conquer**: Varies per problem; log n factor for partitioning.
+
+96. **Backtracking**: Varies; typically exponential for combinatorial problems.
+
+97. **Hill Climbing**: Varies; can be non-polynomial.
+
+98. **Expectation-Maximization Algorithm**: Varies; typically iterative until convergence.
+
+99. **Ant Colony Optimization**: Varies; heuristic algorithm for optimization.
+
+100. **Fisher-Yates Shuffle Algorithm**: O(n) for shuffling.
+
+101. **Johnson's Algorithm**: O(V^2 log V + VE).
+
+102. **Trie Data Structure**: O(m) for search/insert where m is the length of the word.
+
+103. **Max-flow Min-cut Theorem**: Relates to the cost of solving the flow problem (like Edmonds-Karp's complexity).
+
+104. **Berlekamp-Massey Algorithm**: O(n^2) for a sequence of length n.
+
+105. **Hungarian Algorithm**: O(n^3) for solving assignment problem.
+
+106. **Clique Enumeration Algorithm**: Typically NP-complete.
+
+107. **Mutual Exclusion Algorithm**: Varies; based on implementation.
+
+108. **Centroid Decomposition**: O(n log n) for tree operations.
+
+109. **Sparse Table**: O(n log n) preprocessing, O(1) queries.
+
+110. **Euler's Totient Function**: O(sqrt(n)) for computation.
+
+111. **AVL Tree**: O(log n) for insertion, deletion, and lookup.
+
+112. **Skip List**: O(log n) average case for insertion/search.
+
+113. **Mo's Algorithm**: O((n + q)√n) for q queries on an array of size n.
+
+114. **Disjoint Set Union**: O(α(n)) per operation, where α is the inverse Ackermann function.
+
+115. **String Algorithms**: Specific to the algorithm, e.g., KMP: O(n+m).
+
+116. **Computational Geometry Algorithms**: Specific per task, e.g., Convex Hull: O(n log n).
+
+117. **Approximation Algorithms**: Algorithm-specific, often polynomial.
+
+118. **Quantum Algorithms**: Varies; Shor's: polynomial for factoring.

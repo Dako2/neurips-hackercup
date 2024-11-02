@@ -14,6 +14,8 @@ import shutil
 import subprocess
 import math
 import logging
+import threading
+from config import STACK_FLOW_COMMAND
 
 class SolutionManager:
     def __init__(self, exact_match = True):
@@ -22,15 +24,18 @@ class SolutionManager:
 
         self.exact_match = exact_match
         self.bs = None
-
+        self.lock = threading.Lock()
+ 
+        
     def add_solution(self, solution):
-        self.solution_dict[solution.id] = solution
+        with self.lock: 
+            self.solution_dict[solution.id] = solution
 
-        new_solution_df = pd.DataFrame([solution.value])
-        self.solution_manager = pd.concat(
-            [self.solution_manager, new_solution_df], 
-            ignore_index=True
-        )
+            new_solution_df = pd.DataFrame([solution.value])
+            self.solution_manager = pd.concat(
+                [self.solution_manager, new_solution_df], 
+                ignore_index=True
+            )
 
     """
     "eval_status": Sorting by ['passed', 'failed', 'empty', 'error', 'timeout', 'pending']
@@ -521,8 +526,8 @@ def compile_cpp(code: str, code_path: Path, timeout: int = 10) -> TestReport:
         '-O2',
         str(cpp_file),
         '-o',
-        str(exe_file),
-        '-Wl,-stack_size,0x20000000'
+        str(exe_file)
+        #STACK_FLOW_COMMAND,
     ]
     try:
         subprocess.run(
